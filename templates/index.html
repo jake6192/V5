@@ -9,19 +9,26 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-  <h1>Member Perk Tracker</h1>
+
+  <header>
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="40">#
+    </div>
+    <h1>MEMBERSHIPS<br><small>CLAIMED PERKS</small></h1>
+    <div></div>
+  </header>
 
   <div class="top-buttons">
-    <button id="addMemberBtn">Add Member</button>
-    <button id="manageTiersBtn">Manage Tiers</button>
+    <button id="addMemberBtn">+ Add Member</button>
+    <button id="manageTiersBtn">⚙ Manage Tiers</button>
   </div>
 
   <table id="membersTable">
     <thead>
       <tr>
-        <th>Member ID</th>
-        <th>Name</th>
+        <th>ID</th>
         <th>Tier</th>
+        <th>Name</th>
         <th>Actions</th>
       </tr>
     </thead>
