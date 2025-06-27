@@ -1,0 +1,108 @@
+<!-- templates/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Member Perk Tracker</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+  <h1>Member Perk Tracker</h1>
+
+  <div class="top-buttons">
+    <button id="addMemberBtn">Add Member</button>
+    <button id="manageTiersBtn">Manage Tiers</button>
+  </div>
+
+  <table id="membersTable">
+    <thead>
+      <tr>
+        <th>Member ID</th>
+        <th>Name</th>
+        <th>Tier</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Populated by JS -->
+    </tbody>
+  </table>
+
+  <!-- Modals -->
+  <div id="memberModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="memberModalTitle">Add Member</h2>
+      <input type="hidden" id="memberIdInput">
+      <label>Member ID: <input type="number" id="memberIdField"></label>
+      <label>Name: <input type="text" id="nameField"></label>
+      <label>Tier: <select id="tierField"></select></label>
+      <label>Sign Up Date: <input type="date" id="signUpDateField"></label>
+      <label>Date of Birth: <input type="date" id="dobField"></label>
+      <button id="saveMemberBtn">Save Member</button>
+    </div>
+  </div>
+
+  <div id="perksModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Member Perks</h2>
+      <ul id="perksList"></ul>
+    </div>
+  </div>
+
+  <div id="tiersModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Manage Tiers</h2>
+      <ul id="tiersList"></ul>
+      <button id="createTierBtn">Create Tier</button>
+    </div>
+  </div>
+  
+  <div id="tierModal" class="modal">
+	<div class="modal-content">
+	  <span class="close">&times;</span>
+	  <h2 id="tierModalTitle">Edit Tier</h2>
+	  <input type="hidden" id="tierIdInput">
+	  <label>Tier Name: <input type="text" id="tierNameField"></label>
+	  <label>Tier Color: <input type="color" id="tierColorField"></label>
+	  <button id="saveTierBtn">Save Tier</button>
+    </div>
+  </div>
+
+  <div id="tierPerksModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Manage Perks for Tier</h2>
+      <h3>Assigned Perks</h3>
+      <ul id="assignedPerksList"></ul>
+      <h3>Available Perks</h3>
+      <ul id="availablePerksList"></ul>
+      <button id="createPerkBtn">Create Perk</button>
+    </div>
+  </div>
+
+  <div id="perkModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="perkModalTitle">Edit Perk</h2>
+      <input type="hidden" id="perkIdInput">
+      <label>Name: <input type="text" id="perkNameField"></label>
+      <label>Reset Period:
+        <select id="perkResetField">
+          <option value="Weekly">Weekly</option>
+          <option value="Monthly">Monthly</option>
+          <option value="Yearly">Yearly</option>
+          <option value="Unlimited">Unlimited</option>
+        </select>
+      </label>
+      <button id="savePerkBtn">Save Perk</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
