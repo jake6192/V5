@@ -158,19 +158,25 @@ $(document).ready(function () {
 
   $('#saveTierBtn').click(() => {
     const tier = {
-      id: $('#tierIdInput').val(),
-      name: $('#tierNameField').val(),
-      color: $('#tierColorField').val()
+	  id: $('#tierIdInput').val(),
+	  name: $('#tierNameField').val(),
+	  color: $('#tierColorField').val()
     };
     $.ajax({
-      url: '/api/tiers',
-      type: 'POST',
-      data: JSON.stringify(tier),
-      contentType: 'application/json',
-      success: () => {
+	  url: '/api/tiers',
+	  type: 'POST',
+	  data: JSON.stringify(tier),
+	  contentType: 'application/json',
+	  success: () => {
         closeTopModal();
-        loadTiers();
-      }
+	    loadTiers();
+	  },
+	  error: function (xhr) {
+	    // If unique constraint or duplicate error
+  	    if(xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed')))
+  		  alert("Tier name must be unique.");
+  	    else alert("Failed to save tier. Please try again.");
+  	  }
     });
   });
 
