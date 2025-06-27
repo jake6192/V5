@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: member-tracking-app
+    env: python
+    plan: free
+    # Run your DB initializer during the build phase so the SQLite file is ready
+    buildCommand: "python init_db.py"
+    # Use Gunicorn to serve your Flask “app” object defined in app.py
+    startCommand: "gunicorn app:app"
