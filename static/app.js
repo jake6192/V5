@@ -13,7 +13,7 @@ $(document).ready(function () {
 
   function closeTopModal() {
     const id = modalStack.pop();
-    if (id) $(`#${id}`).hide();
+    if(id) $(`#${id}`).hide();
   }
 
   $('.close').on('click', function () {
@@ -21,7 +21,7 @@ $(document).ready(function () {
   });
 
   window.onclick = function (event) {
-    if ($(event.target).hasClass('modal')) closeTopModal();
+    if($(event.target).hasClass('modal')) closeTopModal();
   };
 
   // ========== MEMBERS ==========
@@ -71,12 +71,12 @@ $(document).ready(function () {
     const date_of_birth = $('#dobField').val();
 
     // 1. Check member_id is numeric
-    if (!/^\d+$/.test(member_id)) {
+    if(!/^\d+$/.test(member_id)) {
       alert("Member ID must be a number.");
       return;
     }
     // 2. Check required fields
-    if (!member_id || !name || !tier_id || !sign_up_date) {
+    if(!member_id || !name || !tier_id || !sign_up_date) {
       alert("Please fill in all fields except Date of Birth.");
       return;
     }
@@ -100,7 +100,7 @@ $(document).ready(function () {
       },
       error: function (xhr) {
         // 1. Unique member ID error
-        if (xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed'))) {
+        if(xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed'))) {
           alert("Member ID must be unique.");
         } else {
           alert("Failed to save member. Please try again.");
@@ -111,7 +111,7 @@ $(document).ready(function () {
 
   $(document).on('click', '.deleteMemberBtn', function () {
     const id = $(this).data('id');
-    if (confirm('Delete this member?')) {
+    if(confirm('Delete this member?')) {
       $.ajax({ url: `/api/members/${id}`, type: 'DELETE' }).done(loadMembers);
     }
   });
@@ -182,7 +182,7 @@ $(document).ready(function () {
 
   $(document).on('click', '.deleteTierBtn', function () {
     const id = $(this).data('id');
-    if (confirm('Delete this tier?')) {
+    if(confirm('Delete this tier?')) {
       $.ajax({ url: `/api/tiers/${id}`, type: 'DELETE' }).done(loadTiers);
     }
   });
@@ -288,7 +288,7 @@ $(document).ready(function () {
 
   $(document).on('click', '.deletePerkBtn', function () {
     const perkId = $(this).data('id');
-    if (confirm('Delete this perk?')) {
+    if(confirm('Delete this perk?')) {
       $.ajax({ url: `/api/perks/${perkId}`, type: 'DELETE' }).done(() => {
         loadTierPerks(currentTierId);
         loadMembers();
@@ -308,9 +308,9 @@ $(document).ready(function () {
         let html = `<li class="perk-item">`;
         html += `<div><strong>${p.name}</strong> <span class="reset-period">(${p.reset_period})</span></div>`;
 
-        if (!isUnlimited) {
+        if(!isUnlimited) {
           html += `<div class="perk-meta">`;
-          if (claimed) {
+          if(claimed) {
             html += `<div class="perk-dates">
                         <div>Last: ${formatDMY(p.last_claimed)}</div>
                         <div>Next Reset: ${formatDMY(p.next_reset_date)}</div>
@@ -331,14 +331,14 @@ $(document).ready(function () {
   });
 
   function formatDMY(dateString) {
-    if (!dateString || dateString === '-') return '-';
+    if(!dateString || dateString === '-') return '-';
     const [y, m, d] = dateString.split('-');
     return `${d}-${m}-${y}`;
   }
 
   $(document).on('click', '.claimPerkBtn', function () {
     const perkId = $(this).data('id');
-    if (confirm('Claim this perk?')) {
+    if(confirm('Claim this perk?')) {
       $.ajax({
         url: '/api/member_perks/claim',
         type: 'POST',
@@ -353,7 +353,7 @@ $(document).ready(function () {
 
   $(document).on('click', '.resetPerkBtn', function () {
     const perkId = $(this).data('id');
-    if (confirm('Reset this perk?')) {
+    if(confirm('Reset this perk?')) {
       $.ajax({
         url: '/api/member_perks/reset',
         type: 'POST',
