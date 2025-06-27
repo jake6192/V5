@@ -295,3 +295,35 @@ ul li:hover .manageTierPerksBtn {
   display: flex;
   gap: 8px;
 }
+
+
+
+/* Consistent Edit/Delete button styles */
+
+.btn-edit {
+  background-color: #0a4a3c;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-edit:hover {
+  background-color: #126953;
+}
+
+.btn-delete {
+  background-color: #d11a2a;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background-color: #a41521;
+}

@@ -34,8 +34,8 @@ $(document).ready(function () {
           <td>${m.name}</td>
           <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
           <td>
-            <button class="editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
-            <button class="deleteMemberBtn" data-id="${m.member_id}">Delete</button>
+            <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
+            <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
             <button class="viewPerksBtn" data-id="${m.member_id}">View Perks</button>
           </td>
         </tr>`;
@@ -103,8 +103,8 @@ $(document).ready(function () {
       tiers.forEach(t => {
         ul.append(`<li>
           <span class="tier-badge" style="background-color:${t.color}">${t.name}</span>
-          <button class="editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
-          <button class="deleteTierBtn" data-id="${t.id}">Delete Tier</button>
+          <button class="btn-edit editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
+          <button class="btn-delete deleteTierBtn" data-id="${t.id}">Delete Tier</button>
           <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
         </li>`);
       });
@@ -180,8 +180,8 @@ $(document).ready(function () {
           $('#availablePerksList').append(`<li>
             ${p.name} (${p.reset_period})
             <button class="assignPerkBtn" data-id="${p.id}">Assign Perk</button>
-            <button class="editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
-            <button class="deletePerkBtn" data-id="${p.id}">Delete Perk</button>
+            <button class="btn-edit editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
+            <button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
           </li>`);
         });
       });
