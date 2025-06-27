@@ -1,9 +1,16 @@
 # app.py
 
 from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
-import sqlite3
 from datetime import datetime, timedelta
+from flask_cors import CORS
+import subprocess
+import sqlite3
+import os
+
+# Auto-init the database if it's the first run
+if not os.path.exists('tracking.db'):
+    print("tracking.db not found. Running init_db.py...")
+    subprocess.run(['python', 'init_db.py'])
 
 app = Flask(__name__)
 CORS(app)

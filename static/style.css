@@ -116,6 +116,11 @@ ul li {
   border: 1px solid #ccc;
   border-radius: 4px;
   position: relative;
+  cursor: pointer;
+}
+
+ul li:hover {
+  background: #e6e6e6;
 }
 
 ul li button {
