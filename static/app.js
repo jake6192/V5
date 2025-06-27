@@ -264,26 +264,31 @@ $(document).ready(function () {
   });
 
   // ========== MEMBER PERKS ==========
+  // rendering perk items inside #perksList
   $(document).on('click', '.viewPerksBtn', function () {
-    currentMemberId = $(this).data('id');
-    $.get(`/api/member_perks/${currentMemberId}`, perks => {
-      const ul = $('#perksList').empty();
-      perks.forEach(p => {
-        let html = `<li>${p.name} (${p.reset_period}) `;
-        if (p.reset_period === 'Unlimited') {
-          html += '</li>';
-        } else if (p.perk_claimed) {
-          html += `
-            <span>Last: ${p.last_claimed || '-'}, Reset: ${p.next_reset_date || '-'}</span>
-            <button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>
-            <button disabled>Claimed</button>
-          </li>`;
-        } else {
-          html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button></li>`;
+	currentMemberId = $(this).data('id');
+	$.get(`/api/member_perks/${currentMemberId}`, perks => {
+	  const ul = $('#perksList').empty();
+	  perks.forEach(p => {
+	    const claimed = p.perk_claimed == 1;
+	    const isUnlimited = p.reset_period === 'Unlimited';
+	    let html = `<li class="perk-item">`;
+        html += `<div><strong>${p.name}</strong> <span class="reset-period">(${p.reset_period})</span></div>`;
+		if (!isUnlimited) {
+		  html += `<div class="perk-meta">`;
+		  if (claimed) {
+		    html += `<span>Last: ${p.last_claimed || '-'}</span>`;
+		    html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
+		    html += `<span class="badge-claimed">Claimed</span>`;
+		  } else {
+		    html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button>`;
+		  }
+	      html += `</div>`;
         }
-        ul.append(html);
-      });
-      openModal('perksModal');
+	    html += `</li>`;
+	    ul.append(html);
+	  });
+	  openModal('perksModal');
     });
   });
 

@@ -285,12 +285,26 @@ def get_member_perks(member_id):
     check_and_reset_member_perks(member_id)
     conn = get_connection()
     c = conn.cursor()
+
+    # Get member's tier
+    c.execute('SELECT tier_id FROM members WHERE member_id = ?', (member_id,))
+    member = c.fetchone()
+    if not member:
+        conn.close()
+        return jsonify([])
+
+    # Get all perks assigned to the member's tier, with LEFT JOIN to claimed status
     c.execute('''
-        SELECT p.*, mp.perk_claimed, mp.last_claimed, mp.next_reset_date
-        FROM member_perks mp
-        JOIN perks p ON mp.perk_id = p.id
-        WHERE mp.member_id = ?
-    ''', (member_id,))
+        SELECT 
+            p.id, p.name, p.reset_period,
+            mp.perk_claimed, mp.last_claimed, mp.next_reset_date
+        FROM tier_perks tp
+        JOIN perks p ON tp.perk_id = p.id
+        LEFT JOIN member_perks mp
+          ON mp.perk_id = p.id AND mp.member_id = ?
+        WHERE tp.tier_id = ?
+    ''', (member_id, member['tier_id']))
+
     perks = [dict(row) for row in c.fetchall()]
     conn.close()
     return jsonify(perks)
