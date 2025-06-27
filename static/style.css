@@ -35,6 +35,7 @@ header .brand span {
 small {
   font-size: 0.75em;
   color: #999;
+  margin-right: 10px;
 }
 
 .top-buttons {
@@ -121,15 +122,16 @@ ul {
 ul li {
   background: #f4f4f4;
   margin: 6px 0;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   position: relative;
+  display: flex;
+  line-height: 28px;
 }
 
-ul li:hover .manageTierPerksBtn {
-  display: inline-block;
-}
+ul li:hover { background: #dbdbdb; }
+ul li:hover .manageTierPerksBtn { display: inline-block; }
 
 .manageTierPerksBtn {
   display: none;
@@ -156,10 +158,11 @@ ul li:hover .manageTierPerksBtn {
   margin: 5% auto;
   padding: 20px;
   border-radius: 6px;
-  width: 500px;
-  max-width: 95%;
+  width: fit-content;
+  max-width: 50%;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   position: relative;
+  min-width: 25%;
 }
 
 .modal-content h2 {
@@ -186,21 +189,21 @@ ul li:hover .manageTierPerksBtn {
   box-sizing: border-box;
 }
 
-.modal-content>button { width: 100% !important; }
+.modal-content>button { width: 100% !important; background-color: #0a4a3c !important; color: #fff !important; }
 .modal-content button {
-  width: fit-content;
-  margin: 0 auto;
-  background: #2c3e50;
-  color: white;
-  border: 2px groove #aaa;
-  padding: 10px;
+  min-width: fit-content;
+  margin: 0 0 0 auto;
+  background: #ccc;
+  color: #000;
+  border: 2px groove #000;
+  padding: 4px 15px;
   border-radius: 3px;
 }
 
 .modal-content button:hover {
-  background: #1a252f;
+  background: #ddd;
   border: 2px inset;
-  border-radius: 8px;
+  border-radius: 7px;
 }
 
 .close {
@@ -302,6 +305,12 @@ ul li:hover .manageTierPerksBtn {
   gap: 8px;
 }
 
+
+#assignedPerksList>li>span, #availablePerksList>li>span { word-wrap: anywhere; }
+#availablePerksList>li>button:first-child { margin-left: 10px; }
+#availablePerksList>li>button:not(:nth-child(3)) {
+  margin-left: 10px;
+}
 
 
 /* Consistent Edit/Delete button styles */

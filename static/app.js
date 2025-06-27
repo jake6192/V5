@@ -34,9 +34,9 @@ $(document).ready(function () {
           <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
           <td>${m.name}</td>
           <td>
+            <button class="viewPerksBtn" data-id="${m.member_id}">View Perks</button>
             <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
             <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
-            <button class="viewPerksBtn" data-id="${m.member_id}">View Perks</button>
           </td>
         </tr>`;
         tbody.append(row);
@@ -211,7 +211,7 @@ $(document).ready(function () {
         $('#availablePerksList').empty();
         available.forEach(p => {
           $('#availablePerksList').append(`<li>
-            ${p.name} (${p.reset_period})
+            <span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
             <button class="btn-edit assignPerkBtn" data-id="${p.id}">Assign Perk</button>
             <button class="btn-edit editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
             <button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
