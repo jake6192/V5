@@ -67,10 +67,16 @@ $(document).ready(function () {
       sign_up_date: $('#signUpDateField').val(),
       date_of_birth: $('#dobField').val()
     };
-    $.post('/api/members', JSON.stringify(member), () => {
-      closeModals();
-      loadMembers();
-    });
+	$.ajax({
+	  url: '/api/members',
+	  type: 'POST',
+	  data: JSON.stringify(member),
+	  contentType: 'application/json',
+	  success: () => {
+		closeModals();
+		loadMembers();
+	  }
+	});
   });
 
   $(document).on('click', '.deleteMemberBtn', function () {
@@ -123,11 +129,17 @@ $(document).ready(function () {
       name: $('#tierNameField').val(),
       color: $('#tierColorField').val()
     };
-    $.post('/api/tiers', JSON.stringify(tier), () => {
-      closeModals();
-      loadTiers();
-      loadTiersIntoSelect('#tierField');
-    });
+	$.ajax({
+	  url: '/api/tiers',
+	  type: 'POST',
+	  data: JSON.stringify(tier),
+	  contentType: 'application/json',
+	  success: () => {
+		closeModals();
+		loadTiers();
+		loadTiersIntoSelect('#tierField');
+	  }
+	});
   });
 
   $(document).on('click', '.deleteTierBtn', function () {
@@ -176,9 +188,15 @@ $(document).ready(function () {
 
   $(document).on('click', '.assignPerkBtn', function () {
     const perkId = $(this).data('id');
-    $.post('/api/tier_perks', JSON.stringify({ tier_id: currentTierId, perk_id: perkId }), () => {
-      loadTierPerks(currentTierId);
-    });
+	$.ajax({
+	  url: '/api/tier_perks',
+	  type: 'POST',
+	  data: JSON.stringify({ tier_id: currentTierId, perk_id: perkId }),
+	  contentType: 'application/json',
+	  success: () => {
+		loadTierPerks(currentTierId);
+	  }
+	});
   });
 
   $(document).on('click', '.unassignPerkBtn', function () {
@@ -215,10 +233,16 @@ $(document).ready(function () {
       name: $('#perkNameField').val(),
       reset_period: $('#perkResetField').val()
     };
-    $.post('/api/perks', JSON.stringify(perk), () => {
-      closeModals();
-      loadTierPerks(currentTierId);
-    });
+    $.ajax({
+	  url: '/api/perks',
+	  type: 'POST',
+	  data: JSON.stringify(perk),
+	  contentType: 'application/json',
+	  success: () => {
+		closeModals();
+        loadTierPerks(currentTierId);
+	  }
+	});
   });
 
   $(document).on('click', '.deletePerkBtn', function () {
@@ -258,17 +282,25 @@ $(document).ready(function () {
   $(document).on('click', '.claimPerkBtn', function () {
     const perkId = $(this).data('id');
     if (confirm('Claim this perk?')) {
-      $.post('/api/member_perks/claim', JSON.stringify({ member_id: currentMemberId, perk_id: perkId }), () => {
-        $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click();
-      });
+	  $.ajax({
+		url: '/api/member_perks/claim',
+		type: 'POST',
+		data: JSON.stringify({ member_id: currentMemberId, perk_id: perkId }),
+		contentType: 'application/json',
+		success: () => { $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click(); }
+	  });
     }
   });
 
   $(document).on('click', '.resetPerkBtn', function () {
     const perkId = $(this).data('id');
     if (confirm('Reset this perk?')) {
-      $.post('/api/member_perks/reset', JSON.stringify({ member_id: currentMemberId, perk_id: perkId }), () => {
-        $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click();
+	  $.ajax({
+		url: '/api/member_perks/reset',
+		type: 'POST',
+		data: JSON.stringify({ member_id: currentMemberId, perk_id: perkId }),
+		contentType: 'application/json',
+		success: () => { $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click(); }
       });
     }
   });
