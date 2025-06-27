@@ -101,7 +101,7 @@ def get_members():
     conn = get_connection()
     c = conn.cursor()
     c.execute('''
-        SELECT m.*, t.name AS tier_name
+        SELECT m.*, t.name AS tier_name, t.color
         FROM members m
         LEFT JOIN tiers t ON m.tier_id = t.id
     ''')

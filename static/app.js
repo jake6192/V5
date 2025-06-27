@@ -32,7 +32,7 @@ $(document).ready(function () {
         const row = `<tr>
           <td>${m.member_id}</td>
           <td>${m.name}</td>
-          <td>${m.tier_name || '—'}</td>
+          <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
           <td>
             <button class="editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
             <button class="deleteMemberBtn" data-id="${m.member_id}">Delete</button>
@@ -102,7 +102,7 @@ $(document).ready(function () {
       const ul = $('#tiersList').empty();
       tiers.forEach(t => {
         ul.append(`<li>
-          <b>${t.name}</b> (${t.color})
+          <span class="tier-badge" style="background-color:${t.color}">${t.name}</span>
           <button class="editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
           <button class="deleteTierBtn" data-id="${t.id}">Delete Tier</button>
           <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
