@@ -225,8 +225,14 @@ ul li:hover .manageTierPerksBtn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 6px;
   font-size: 14px;
+  margin-top: 6px;
+}
+
+.perk-dates {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
 }
 
 .badge-claimed {

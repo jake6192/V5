@@ -31,8 +31,8 @@ $(document).ready(function () {
       members.forEach(m => {
         const row = `<tr>
           <td>${m.member_id}</td>
-          <td>${m.name}</td>
           <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
+          <td>${m.name}</td>
           <td>
             <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
             <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
@@ -64,13 +64,30 @@ $(document).ready(function () {
   });
 
   $('#saveMemberBtn').click(() => {
+    const member_id = $('#memberIdField').val();
+    const name = $('#nameField').val();
+    const tier_id = $('#tierField').val();
+    const sign_up_date = $('#signUpDateField').val();
+    const date_of_birth = $('#dobField').val();
+
+    // 1. Check member_id is numeric
+    if (!/^\d+$/.test(member_id)) {
+      alert("Member ID must be a number.");
+      return;
+    }
+    // 2. Check required fields
+    if (!member_id || !name || !tier_id || !sign_up_date) {
+      alert("Please fill in all fields except Date of Birth.");
+      return;
+    }
+
     const member = {
       id: $('#memberIdInput').val(),
-      member_id: $('#memberIdField').val(),
-      name: $('#nameField').val(),
-      tier_id: $('#tierField').val(),
-      sign_up_date: $('#signUpDateField').val(),
-      date_of_birth: $('#dobField').val()
+      member_id: member_id,
+      name: name,
+      tier_id: tier_id,
+      sign_up_date: sign_up_date,
+      date_of_birth: date_of_birth
     };
     $.ajax({
       url: '/api/members',
@@ -103,12 +120,14 @@ $(document).ready(function () {
       tiers.forEach(t => {
         ul.append(`<li>
           <span class="tier-badge" style="background-color:${t.color}">${t.name}</span>
-          <button class="btn-edit editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
-          <button class="btn-delete deleteTierBtn" data-id="${t.id}">Delete Tier</button>
-          <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
+          <span class="tier-actions">
+            <button class="btn-edit editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
+            <button class="btn-delete deleteTierBtn" data-id="${t.id}">Delete Tier</button>
+            <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
+          </span>
         </li>`);
       });
-      loadMembers(); // Refresh members in case tier names changed
+      loadMembers();
     });
   }
 
@@ -171,7 +190,7 @@ $(document).ready(function () {
         assigned.forEach(p => {
           $('#assignedPerksList').append(`<li>
             ${p.name} (${p.reset_period})
-            <button class="unassignPerkBtn" data-id="${p.id}">Unassign Perk</button>
+            <button class="btn-delete unassignPerkBtn" data-id="${p.id}">Unassign Perk</button>
           </li>`);
         });
 
@@ -179,7 +198,7 @@ $(document).ready(function () {
         available.forEach(p => {
           $('#availablePerksList').append(`<li>
             ${p.name} (${p.reset_period})
-            <button class="assignPerkBtn" data-id="${p.id}">Assign Perk</button>
+            <button class="btn-edit assignPerkBtn" data-id="${p.id}">Assign Perk</button>
             <button class="btn-edit editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
             <button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
           </li>`);
@@ -266,31 +285,42 @@ $(document).ready(function () {
   // ========== MEMBER PERKS ==========
   // rendering perk items inside #perksList
   $(document).on('click', '.viewPerksBtn', function () {
-	currentMemberId = $(this).data('id');
-	$.get(`/api/member_perks/${currentMemberId}`, perks => {
-	  const ul = $('#perksList').empty();
-	  perks.forEach(p => {
-	    const claimed = p.perk_claimed == 1;
-	    const isUnlimited = p.reset_period === 'Unlimited';
-	    let html = `<li class="perk-item">`;
+    currentMemberId = $(this).data('id');
+    $.get(`/api/member_perks/${currentMemberId}`, perks => {
+      const ul = $('#perksList').empty();
+      perks.forEach(p => {
+        const claimed = p.perk_claimed == 1;
+        const isUnlimited = p.reset_period === 'Unlimited';
+        let html = `<li class="perk-item">`;
         html += `<div><strong>${p.name}</strong> <span class="reset-period">(${p.reset_period})</span></div>`;
-		if (!isUnlimited) {
-		  html += `<div class="perk-meta">`;
-		  if (claimed) {
-		    html += `<span>Last: ${p.last_claimed || '-'}</span>`;
-		    html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
-		    html += `<span class="badge-claimed">Claimed</span>`;
-		  } else {
-		    html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button>`;
-		  }
-	      html += `</div>`;
+
+        if (!isUnlimited) {
+          html += `<div class="perk-meta">`;
+          if (claimed) {
+            html += `<div class="perk-dates">
+                        <div>Last: ${p.last_claimed || '-'}</div>
+                        <div>Next Reset: ${formatDMY(p.next_reset_date)}</div>
+                     </div>`;
+            html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
+            html += `<span class="badge-claimed">Claimed</span>`;
+          } else {
+            html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button>`;
+          }
+          html += `</div>`;
         }
-	    html += `</li>`;
-	    ul.append(html);
-	  });
-	  openModal('perksModal');
+
+        html += `</li>`;
+        ul.append(html);
+      });
+      openModal('perksModal');
     });
   });
+
+  function formatDMY(dateString) {
+    if (!dateString || dateString === '-') return '-';
+    const [y, m, d] = dateString.split('-');
+    return `${d}-${m}-${y}`;
+  }
 
   $(document).on('click', '.claimPerkBtn', function () {
     const perkId = $(this).data('id');

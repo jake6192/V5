@@ -91,6 +91,42 @@ def check_and_reset_member_perks(member_id):
     conn.commit()
     conn.close()
 
+# --- NEW: calculate next reset date when claiming
+def calculate_next_reset(reset_period, member):
+    today = datetime.today()
+    if reset_period == "Weekly":
+        days_until_monday = (7 - today.weekday()) % 7
+        if days_until_monday == 0:
+            days_until_monday = 7
+        return (today + timedelta(days=days_until_monday)).strftime("%Y-%m-%d")
+    elif reset_period == "Monthly":
+        try:
+            signup_day = int(member["sign_up_date"].split("-")[2])
+            this_month_reset = today.replace(day=signup_day)
+            if today.day < signup_day:
+                next_reset = this_month_reset
+            else:
+                # get next month (handle year wrap)
+                month = today.month + 1 if today.month < 12 else 1
+                year = today.year if today.month < 12 else today.year + 1
+                import calendar
+                last_day = calendar.monthrange(year, month)[1]
+                day = min(signup_day, last_day)
+                next_reset = today.replace(year=year, month=month, day=day)
+            return next_reset.strftime("%Y-%m-%d")
+        except:
+            return None
+    elif reset_period == "Yearly":
+        try:
+            dob = datetime.strptime(member["date_of_birth"], "%Y-%m-%d")
+            next_reset = dob.replace(year=today.year)
+            if next_reset < today:
+                next_reset = next_reset.replace(year=today.year + 1)
+            return next_reset.strftime("%Y-%m-%d")
+        except:
+            return None
+    return None
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -128,6 +164,23 @@ def create_or_edit_member():
             UPDATE members SET member_id=?, name=?, tier_id=?, sign_up_date=?, date_of_birth=?
             WHERE id=?
         ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['id']))
+        # After editing, update next_reset_date for all claimed perks
+        c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
+        mid_row = c.fetchone()
+        if mid_row:
+            mid = mid_row['member_id']
+            c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id=?', (mid,))
+            member = c.fetchone()
+            c.execute('''
+                SELECT mp.perk_id, p.reset_period FROM member_perks mp
+                JOIN perks p ON mp.perk_id = p.id
+                WHERE mp.member_id=? AND mp.perk_claimed=1
+            ''', (mid,))
+            claimed_perks = c.fetchall()
+            for perk in claimed_perks:
+                next_reset = calculate_next_reset(perk['reset_period'], {"sign_up_date": member["sign_up_date"], "date_of_birth": member["date_of_birth"]})
+                c.execute('UPDATE member_perks SET next_reset_date=? WHERE member_id=? AND perk_id=?',
+                          (next_reset, mid, perk['perk_id']))
     else:
         c.execute('''
             INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth)
@@ -147,7 +200,7 @@ def delete_member(member_id):
     conn.close()
     return ('OK', 200)
 
-# TIER ROUTES
+# TIER ROUTES (unchanged)
 @app.route('/api/tiers', methods=['GET'])
 def get_tiers():
     conn = get_connection()
@@ -189,7 +242,7 @@ def delete_tier(tier_id):
     conn.close()
     return ('OK', 200)
 
-# PERKS ROUTES
+# PERKS ROUTES (unchanged)
 @app.route('/api/perks', methods=['GET'])
 def get_perks():
     conn = get_connection()
@@ -234,7 +287,7 @@ def delete_perk(perk_id):
     conn.close()
     return ('OK', 200)
 
-# TIER-PERKS ROUTES
+# TIER-PERKS ROUTES (unchanged)
 @app.route('/api/tier_perks/<int:tier_id>', methods=['GET'])
 def get_perks_for_tier(tier_id):
     conn = get_connection()
@@ -315,13 +368,29 @@ def claim_perk():
     now = datetime.now().strftime("%Y-%m-%d")
     conn = get_connection()
     c = conn.cursor()
+    c.execute('SELECT reset_period FROM perks WHERE id = ?', (data['perk_id'],))
+    perk = c.fetchone()
+    c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (data['member_id'],))
+    member = c.fetchone()
+    reset_period = perk["reset_period"] if perk else None
+    member_data = {
+        "sign_up_date": member["sign_up_date"],
+        "date_of_birth": member["date_of_birth"]
+    } if member else {}
+    next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
+
+    # Fix: Use UPDATE first, INSERT if no row
     c.execute('''
         UPDATE member_perks
-        SET perk_claimed = 1,
-            last_claimed = ?,
-            next_reset_date = NULL
-        WHERE member_id = ? AND perk_id = ?
-    ''', (now, data['member_id'], data['perk_id']))
+        SET perk_claimed=1, last_claimed=?, next_reset_date=?
+        WHERE member_id=? AND perk_id=?
+    ''', (now, next_reset, data['member_id'], data['perk_id']))
+    if c.rowcount == 0:
+        c.execute('''
+            INSERT INTO member_perks (member_id, perk_id, perk_claimed, last_claimed, next_reset_date)
+            VALUES (?, ?, 1, ?, ?)
+        ''', (data['member_id'], data['perk_id'], now, next_reset))
+
     conn.commit()
     conn.close()
     return ('OK', 200)

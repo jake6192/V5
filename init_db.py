@@ -57,6 +57,7 @@ CREATE TABLE member_perks (
     perk_claimed INTEGER DEFAULT 0,
     last_claimed TEXT,
     next_reset_date TEXT,
+    PRIMARY KEY (member_id, perk_id),
     FOREIGN KEY (member_id) REFERENCES members(member_id),
     FOREIGN KEY (perk_id) REFERENCES perks(id)
 )
