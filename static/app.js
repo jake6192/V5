@@ -97,6 +97,14 @@ $(document).ready(function () {
       success: () => {
         closeTopModal();
         loadMembers();
+      },
+      error: function (xhr) {
+        // 1. Unique member ID error
+        if (xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed'))) {
+          alert("Member ID must be unique.");
+        } else {
+          alert("Failed to save member. Please try again.");
+        }
       }
     });
   });
@@ -121,9 +129,9 @@ $(document).ready(function () {
         ul.append(`<li>
           <span class="tier-badge" style="background-color:${t.color}">${t.name}</span>
           <span class="tier-actions">
+            <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
             <button class="btn-edit editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
             <button class="btn-delete deleteTierBtn" data-id="${t.id}">Delete Tier</button>
-            <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
           </span>
         </li>`);
       });
@@ -298,7 +306,7 @@ $(document).ready(function () {
           html += `<div class="perk-meta">`;
           if (claimed) {
             html += `<div class="perk-dates">
-                        <div>Last: ${p.last_claimed || '-'}</div>
+                        <div>Last: ${formatDMY(p.last_claimed)}</div>
                         <div>Next Reset: ${formatDMY(p.next_reset_date)}</div>
                      </div>`;
             html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
