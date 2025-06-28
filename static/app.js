@@ -303,7 +303,7 @@ $(document).ready(function () {
     $.get(`/api/member_perks/${currentMemberId}`, perks => {
       const ul = $('#perksList').empty();
       perks.forEach(p => {
-        const claimed = p.perk_claimed == 1;
+        const claimed = p.last_claimed !== null && p.last_claimed !== undefined;
         const isUnlimited = p.reset_period === 'Unlimited';
         let html = `<li class="perk-item">`;
         html += `<div><strong>${p.name}</strong> <span class="reset-period">(${p.reset_period})</span></div>`;
@@ -312,8 +312,8 @@ $(document).ready(function () {
           html += `<div class="perk-meta">`;
           if(claimed) {
             html += `<div class="perk-dates">
-                        <div>Last: ${formatDMY(p.last_claimed)}</div>
-                        <div>Next Reset: ${formatDMY(p.next_reset_date)}</div>
+                        <div>Claimed On: ${formatDMY(p.last_claimed)}</div>
+                        <div>Resets On: ${formatDMY(p.next_reset_date)}</div>
                      </div>`;
             html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
             html += `<span class="badge-claimed">Claimed</span>`;
@@ -331,7 +331,7 @@ $(document).ready(function () {
   });
 
   function formatDMY(dateString) {
-    if(!dateString || dateString === '-') return '-';
+    if(!dateString || dateString === '-' || dateString === 'null') return '-';
     const [y, m, d] = dateString.split('-');
     return `${d}-${m}-${y}`;
   }

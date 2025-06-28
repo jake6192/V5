@@ -54,7 +54,6 @@ c.execute('''
 CREATE TABLE member_perks (
     member_id INTEGER,
     perk_id INTEGER,
-    perk_claimed INTEGER DEFAULT 0,
     last_claimed TEXT,
     next_reset_date TEXT,
     PRIMARY KEY (member_id, perk_id),

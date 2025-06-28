@@ -60,10 +60,10 @@ def check_and_reset_member_perks(member_id):
             return
 
         c.execute('''
-            SELECT mp.member_id, mp.perk_id, mp.perk_claimed, mp.last_claimed, p.reset_period
+            SELECT mp.member_id, mp.perk_id, mp.last_claimed, p.reset_period
             FROM member_perks mp
             JOIN perks p ON mp.perk_id = p.id
-            WHERE mp.member_id = ? AND mp.perk_claimed = 1
+            WHERE mp.member_id = ?
         ''', (member_id,))
         rows = c.fetchall()
 
@@ -81,10 +81,7 @@ def check_and_reset_member_perks(member_id):
 
             if reset:
                 c.execute('''
-                    UPDATE member_perks
-                    SET perk_claimed = 0,
-                        last_claimed = NULL,
-                        next_reset_date = NULL
+                    DELETE FROM member_perks
                     WHERE member_id = ? AND perk_id = ?
                 ''', (member_id, row['perk_id']))
 
@@ -92,7 +89,7 @@ def check_and_reset_member_perks(member_id):
     finally:
         conn.close()
 
-# --- NEW: calculate next reset date when claiming
+# --- calculate next reset date when claiming
 def calculate_next_reset(reset_period, member):
     today = datetime.today()
     if reset_period == "Weekly":
@@ -179,7 +176,7 @@ def create_or_edit_member():
                 c.execute('''
                     SELECT mp.perk_id, p.reset_period FROM member_perks mp
                     JOIN perks p ON mp.perk_id = p.id
-                    WHERE mp.member_id=? AND mp.perk_claimed=1
+                    WHERE mp.member_id=?
                 ''', (mid,))
                 claimed_perks = c.fetchall()
                 for perk in claimed_perks:
@@ -199,7 +196,7 @@ def create_or_edit_member():
 @app.route('/api/members/<int:member_id>', methods=['DELETE'])
 def delete_member(member_id):
     conn = get_connection()
-# TIER ROUTES (unchanged)
+# TIER ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM member_perks WHERE member_id = ?', (member_id,))
@@ -249,7 +246,7 @@ def create_or_edit_tier():
 @app.route('/api/tiers/<int:tier_id>', methods=['DELETE'])
 def delete_tier(tier_id):
     conn = get_connection()
-# PERKS ROUTES (unchanged)
+# PERKS ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM tier_perks WHERE tier_id = ?', (tier_id,))
@@ -301,7 +298,7 @@ def create_or_edit_perk():
 @app.route('/api/perks/<int:perk_id>', methods=['DELETE'])
 def delete_perk(perk_id):
     conn = get_connection()
-# TIER-PERKS ROUTES (unchanged)
+# TIER-PERKS ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM tier_perks WHERE perk_id = ?', (perk_id,))
@@ -340,10 +337,8 @@ def assign_perk_to_tier():
         c.execute('SELECT member_id FROM members WHERE tier_id = ?', (data['tier_id'],))
         members = c.fetchall()
         for m in members:
-            c.execute('''
-                INSERT OR IGNORE INTO member_perks (member_id, perk_id)
-                VALUES (?, ?)
-            ''', (m['member_id'], data['perk_id']))
+            # No need to insert member_perks row, will be created on claim
+            pass
         conn.commit()
         return ('OK', 200)
     finally:
@@ -377,7 +372,7 @@ def get_member_perks(member_id):
         c.execute('''
             SELECT 
                 p.id, p.name, p.reset_period,
-                mp.perk_claimed, mp.last_claimed, mp.next_reset_date
+                mp.last_claimed, mp.next_reset_date
             FROM tier_perks tp
             JOIN perks p ON tp.perk_id = p.id
             LEFT JOIN member_perks mp
@@ -411,18 +406,11 @@ def claim_perk():
 
         next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
 
-        # UPDATE first, then INSERT if nothing updated
+        # INSERT new perk claim for member
         c.execute('''
-            UPDATE member_perks
-            SET perk_claimed=1, last_claimed=?, next_reset_date=?
-            WHERE member_id=? AND perk_id=?
-        ''', (now, next_reset, data['member_id'], data['perk_id']))
-        if c.rowcount == 0:
-            c.execute('''
-                INSERT INTO member_perks (member_id, perk_id, perk_claimed, last_claimed, next_reset_date)
-                VALUES (?, ?, 1, ?, ?)
+                INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
+                VALUES (?, ?, ?, ?)
             ''', (data['member_id'], data['perk_id'], now, next_reset))
-
         conn.commit()
         return ('OK', 200)
     finally:
@@ -435,10 +423,7 @@ def reset_perk():
     try:
         c = conn.cursor()
         c.execute('''
-            UPDATE member_perks
-            SET perk_claimed = 0,
-                last_claimed = NULL,
-                next_reset_date = NULL
+            DELETE FROM member_perks
             WHERE member_id = ? AND perk_id = ?
         ''', (data['member_id'], data['perk_id']))
         conn.commit()
