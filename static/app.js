@@ -71,8 +71,8 @@ $(document).ready(function () {
     const date_of_birth = $('#dobField').val();
 
     // 1. Check member_id is numeric
-    if(!/^\d+$/.test(member_id)) {
-      alert("Member ID must be a number.");
+    if(!/^\d+$/.test(member_id) || parseInt(member_id) === 0) {
+      alert("Member ID must be a number greater than 0.");
       return;
     }
     // 2. Check required fields
