@@ -262,7 +262,17 @@ def get_perks():
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute('SELECT * FROM perks')
+        c.execute("""
+            SELECT * FROM perks
+            ORDER BY
+              CASE reset_period
+                WHEN 'Weekly' THEN 1
+                WHEN 'Monthly' THEN 2
+                WHEN 'Yearly' THEN 3
+                WHEN 'Unlimited' THEN 4
+                ELSE 5
+              END
+        """)
         perks = [dict(row) for row in c.fetchall()]
         return jsonify(perks)
     finally:
@@ -320,6 +330,14 @@ def get_perks_for_tier(tier_id):
             FROM tier_perks tp
             JOIN perks p ON tp.perk_id = p.id
             WHERE tp.tier_id = ?
+            ORDER BY
+              CASE p.reset_period
+                WHEN 'Weekly' THEN 1
+                WHEN 'Monthly' THEN 2
+                WHEN 'Yearly' THEN 3
+                WHEN 'Unlimited' THEN 4
+                ELSE 5
+              END
         ''', (tier_id,))
         perks = [dict(row) for row in c.fetchall()]
         return jsonify(perks)
@@ -379,6 +397,14 @@ def get_member_perks(member_id):
             LEFT JOIN member_perks mp
               ON mp.perk_id = p.id AND mp.member_id = ?
             WHERE tp.tier_id = ?
+            ORDER BY
+              CASE p.reset_period
+                WHEN 'Weekly' THEN 1
+                WHEN 'Monthly' THEN 2
+                WHEN 'Yearly' THEN 3
+                WHEN 'Unlimited' THEN 4
+                ELSE 5
+              END
         ''', (member_id, member['tier_id']))
 
         perks = [dict(row) for row in c.fetchall()]
