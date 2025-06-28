@@ -6,6 +6,24 @@ from flask_cors import CORS
 import subprocess
 import sqlite3
 import os
+from flask import request, send_file, abort
+
+DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
+
+@app.route('/download-db')
+def download_db():
+    pw = request.args.get("pw", "")
+    if pw != DOWNLOAD_DB_PASSWORD:
+        # Show a simple prompt if not correct
+        return '''
+        <form>
+            <input type="password" name="pw" placeholder="Password"/>
+            <button type="submit">Download DB</button>
+        </form>
+        <div style="color:red;margin-top:10px;">
+            {}</div>
+        '''.format("Incorrect password." if pw else "")
+    return send_file('tracking.db', as_attachment=True)
 
 # Auto-init the database if it's the first run
 if not os.path.exists('tracking.db'):
