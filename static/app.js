@@ -203,7 +203,7 @@ $(document).ready(function () {
         $('#assignedPerksList').empty();
         assigned.forEach(p => {
           $('#assignedPerksList').append(`<li>
-            ${p.name} (${p.reset_period})
+            <span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
             <button class="btn-delete unassignPerkBtn" data-id="${p.id}">Unassign Perk</button>
           </li>`);
         });
