@@ -139,6 +139,7 @@ def get_members():
             SELECT m.*, t.name AS tier_name, t.color
             FROM members m
             LEFT JOIN tiers t ON m.tier_id = t.id
+            ORDER BY m.member_id
         ''')
         members = [dict(row) for row in c.fetchall()]
         return jsonify(members)
