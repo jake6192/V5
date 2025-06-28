@@ -198,7 +198,7 @@ ul li:hover .manageTierPerksBtn { display: inline-block; }
   box-sizing: border-box;
 }
 
-.modal-content>button { width: 100% !important; background-color: #0a4a3c !important; color: #fff !important; }
+.modal-content>button { width: calc(100% - 60px) !important; background-color: #0a4a3c !important; color: #fff !important; margin: 0 30px !important;}
 .modal-content button {
   min-width: fit-content;
   margin: 0 0 0 auto;
