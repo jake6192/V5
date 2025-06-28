@@ -180,10 +180,20 @@ def create_or_edit_member():
     try:
         c = conn.cursor()
         if 'id' in data and data['id']:
+            # Find the previous member_id for this row
+            c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
+            old = c.fetchone()
+            old_member_id = old['member_id'] if old else None
+            # Update the member row
             c.execute('''
                 UPDATE members SET member_id=?, name=?, tier_id=?, sign_up_date=?, date_of_birth=?
                 WHERE id=?
             ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['id']))
+            # If member_id changed, update all member_perks rows
+            if old_member_id and str(old_member_id) != str(data['member_id']):
+                c.execute('''
+                    UPDATE member_perks SET member_id=? WHERE member_id=?
+                ''', (data['member_id'], old_member_id))
             c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
             mid_row = c.fetchone()
             if mid_row:
