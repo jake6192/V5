@@ -8,6 +8,14 @@ import sqlite3
 import os
 from flask import request, send_file, abort
 
+# Auto-init the database if it's the first run
+if not os.path.exists('tracking.db'):
+    print("tracking.db not found. Running init_db.py...")
+    subprocess.run(['python', 'init_db.py'])
+
+app = Flask(__name__)
+CORS(app)
+DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
 
 @app.route('/download-db')
@@ -24,16 +32,6 @@ def download_db():
             {}</div>
         '''.format("Incorrect password." if pw else "")
     return send_file('tracking.db', as_attachment=True)
-
-# Auto-init the database if it's the first run
-if not os.path.exists('tracking.db'):
-    print("tracking.db not found. Running init_db.py...")
-    subprocess.run(['python', 'init_db.py'])
-
-app = Flask(__name__)
-CORS(app)
-
-DB = 'tracking.db'
 
 def get_connection():
     conn = sqlite3.connect(DB, timeout=30)
