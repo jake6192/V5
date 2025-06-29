@@ -27,10 +27,11 @@ $(document).ready(function () {
   // ========== MEMBERS ==========
   let allMembers = [];
 
-  function loadMembers() {
+  function loadMembers(callback) {
     $.get('/api/members', function (members) {
       allMembers = members; // Keep a copy for searching
       renderMemberTable(members);
+	  if(callback) callback(members);
     });
   }
 
@@ -139,13 +140,16 @@ $(document).ready(function () {
   });
 
   // ========== TIERS ==========
+  let allTiers = [];
+  
   $('#manageTiersBtn').click(() => {
     loadTiers();
     openModal('tiersModal');
   });
 
-  function loadTiers() {
+  function loadTiers(callback) {
     $.get('/api/tiers', tiers => {
+	  allTiers = tiers;
       const ul = $('#tiersList').empty();
       tiers.forEach(t => {
         ul.append(`<li>
@@ -158,6 +162,7 @@ $(document).ready(function () {
         </li>`);
       });
       loadMembers();
+	  if(callback) callback(tiers);
     });
   }
 
@@ -213,6 +218,8 @@ $(document).ready(function () {
   $(document).on('click', '.manageTierPerksBtn', function () {
     currentTierId = $(this).data('id');
     loadTierPerks(currentTierId);
+    const tier = allTiers.find(t => t.id == currentTierId);
+    $('#tierPerksModal .tierName').text(tier ? `${tier.name}` : '');
     openModal('tierPerksModal');
   });
 
@@ -322,6 +329,8 @@ $(document).ready(function () {
   // rendering perk items inside #perksList
   $(document).on('click', '.viewPerksBtn', function () {
     currentMemberId = $(this).data('id');
+	const member = allMembers.find(m => m.member_id == currentMemberId);
+    $('#perksModal .memberName').text(member ? `${member.name}` : '');
     $.get(`/api/member_perks/${currentMemberId}`, perks => {
       const ul = $('#perksList').empty();
       perks.forEach(p => {
