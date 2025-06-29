@@ -25,24 +25,46 @@ $(document).ready(function () {
   };
 
   // ========== MEMBERS ==========
+  let allMembers = [];
+
   function loadMembers() {
     $.get('/api/members', function (members) {
-      const tbody = $('#membersTable tbody').empty();
-      members.forEach(m => {
-        const row = `<tr>
-          <td>${m.member_id}</td>
-          <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
-          <td>${m.name}</td>
-          <td>
-            <button class="viewPerksBtn" data-id="${m.member_id}">Claim Perks</button>
-            <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
-            <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
-          </td>
-        </tr>`;
-        tbody.append(row);
-      });
+      allMembers = members; // Keep a copy for searching
+      renderMemberTable(members);
     });
   }
+
+  function renderMemberTable(members) {
+    const tbody = $('#membersTable tbody').empty();
+    members.forEach(m => {
+      const row = `<tr>
+        <td>${m.member_id}</td>
+        <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
+        <td>${m.name}</td>
+        <td>
+          <button class="viewPerksBtn" data-id="${m.member_id}">View Perks</button>
+          <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
+          <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
+        </td>
+      </tr>`;
+      tbody.append(row);
+    });
+  }
+  
+  // Filter table as you type
+  $('#memberSearch').on('input', function () {
+    const term = $(this).val().toLowerCase();
+    if (!term) {
+      renderMemberTable(allMembers);
+      return;
+    }
+    const filtered = allMembers.filter(m =>
+      (m.member_id + '').toLowerCase().includes(term) ||
+      (m.name || '').toLowerCase().includes(term) ||
+      (m.tier_name || '').toLowerCase().includes(term)
+    );
+    renderMemberTable(filtered);
+  });
 
   $('#addMemberBtn').click(() => {
     $('#memberModalTitle').text('Add Member');

@@ -360,3 +360,22 @@ ul li:hover .manageTierPerksBtn { display: inline-block; }
 .btn-delete:hover {
   background-color: #a41521;
 }
+
+.member-search {
+  width: 340px;
+  font-size: 1.04rem;
+  padding: 9px 18px 9px 36px;
+  border: none;
+  border-radius: 18px;
+  box-shadow: 0 2px 10px rgba(20,40,20,0.10);
+  background: #f7ffe1 url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' width='19' height='19' fill='none' stroke='%230a4a3c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='feather feather-search'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat;
+  transition: box-shadow 0.16s;
+  outline: none;
+  float: left;
+  margin-left: 5%;
+}
+
+.member-search:focus {
+  box-shadow: 0 3px 14px rgba(20,40,20,0.18);
+  background-color: #ffffef;
+}
