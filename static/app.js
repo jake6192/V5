@@ -206,7 +206,7 @@ $(document).ready(function () {
 
 	$(document).on('click', '.deleteTierBtn', function () {
 		const id = $(this).data('id');
-		if(confirm('Delete this tier?')) {
+		if(confirm('Delete this tier?'))
 			$.ajax({ url: `/api/tiers/${id}`, type: 'DELETE' }).done(loadTiers);
 	});
 
