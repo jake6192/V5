@@ -34,6 +34,7 @@ $(document).ready(function () {
           <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
           <td>${m.name}</td>
           <td>
+            <button class="viewPerksBtn" data-id="${m.member_id}">Claim Perks</button>
             <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
             <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
           </td>
@@ -42,7 +43,6 @@ $(document).ready(function () {
       });
     });
   }
-	  <button class="viewPerksBtn" data-id="${m.member_id}">Claim Perks</button>
 
   $('#addMemberBtn').click(() => {
     $('#memberModalTitle').text('Add Member');
