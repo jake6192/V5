@@ -39,28 +39,42 @@ def get_connection():
     return conn
 
 def should_reset_weekly(last_claimed):
-    last = datetime.strptime(last_claimed, "%Y-%m-%d")
+    # last_claimed comes in as "YYYY-MM-DD hh:mm:ss"
+    # parse full timestamp if present, else date‐only
+    try:
+        last = datetime.strptime(last_claimed, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        last = datetime.strptime(last_claimed, "%Y-%m-%d")
     today = datetime.now()
-    last_monday = today - timedelta(days=today.weekday())
-    return last < last_monday
+    # compute this week's Monday at 00:00:00
+    this_monday = (today - timedelta(days=today.weekday())).replace(hour=0,minute=0,second=0,microsecond=0)
+    return last < this_monday
 
 def should_reset_monthly(last_claimed, sign_up_date):
     try:
-        claimed = datetime.strptime(last_claimed, "%Y-%m-%d")
+        try:
+            claimed = datetime.strptime(last_claimed, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            claimed = datetime.strptime(last_claimed, "%Y-%m-%d")
         signup_day = int(sign_up_date.split('-')[2])
         today = datetime.now()
-        reset_date = today.replace(day=signup_day)
-        return claimed < reset_date and today.day == signup_day
+        # reset cutoff at signup_day 00:00:00
+        reset_cutoff = today.replace(day=signup_day, hour=0, minute=0, second=0, microsecond=0)
+        return (today.day == signup_day) and (claimed < reset_cutoff)
     except:
         return False
 
 def should_reset_yearly(last_claimed, dob):
     try:
-        claimed = datetime.strptime(last_claimed, "%Y-%m-%d")
+        try:
+            claimed = datetime.strptime(last_claimed, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            claimed = datetime.strptime(last_claimed, "%Y-%m-%d")
         dob_month, dob_day = int(dob.split('-')[1]), int(dob.split('-')[2])
         today = datetime.now()
-        reset_this_year = datetime(today.year, dob_month, dob_day)
-        return claimed < reset_this_year and today.month == dob_month and today.day == dob_day
+        # reset cutoff at birthday 00:00:00 this year
+        reset_cutoff = datetime(today.year, dob_month, dob_day, 0,0,0)
+        return (today.month == dob_month and today.day == dob_day) and (claimed < reset_cutoff)
     except:
         return False
 
@@ -442,7 +456,8 @@ def get_member_perks(member_id):
 @app.route('/api/member_perks/claim', methods=['POST'])
 def claim_perk():
     data = request.json
-    now = datetime.now().strftime("%Y-%m-%d")
+    now_dt = datetime.now()
+    now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
     conn = get_connection()
     try:
         c = conn.cursor()
