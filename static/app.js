@@ -44,7 +44,7 @@ $(document).ready(function () {
 				<td>${m.name}</td>
 				<td>
 					<button class="viewPerksBtn" data-id="${m.member_id}">View Perks</button>
-					<button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
+					<button class="btn-edit editMemberBtn" data-id="${encodeURI(JSON.stringify(m))}">Edit</button>
 					<button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
 				</td>
 			</tr>`;
@@ -75,7 +75,7 @@ $(document).ready(function () {
 	});
 
 	$(document).on('click', '.editMemberBtn', function () {
-		const data = JSON.parse($(this).attr('data-id'));
+		const data = JSON.parse(decodeURI($(this).attr('data-id')));
 		$('#memberModalTitle').text('Edit Member');
 		$('#memberIdInput').val(data.id);
 		$('#memberIdField').val(data.member_id);
