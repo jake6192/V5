@@ -1,19 +1,24 @@
 // static/app.js
 
 $(document).ready(function () {
+    console.log('[INIT] app.js loaded');
 	let currentTierId = null;
 	let currentMemberId = null;
 	let modalStack = [];
 
 	// ========== MODAL HANDLERS ==========
 	function openModal(id) {
+		console.log(`[MODAL OPEN] ${id}`);
 		$(`#${id}`).show();
 		modalStack.push(id);
 	}
 
 	function closeTopModal() {
 		const id = modalStack.pop();
-		if(id) $(`#${id}`).hide();
+		if (id) {
+			console.log(`[MODAL CLOSE] ${id}`);
+			$(`#${id}`).hide();
+		}
 	}
 
 	$('.close').on('click', function () {
@@ -21,21 +26,26 @@ $(document).ready(function () {
 	});
 
 	window.onclick = function (event) {
-		if($(event.target).hasClass('modal')) closeTopModal();
+		if ($(event.target).hasClass('modal')) closeTopModal();
 	};
 
 	// ========== MEMBERS ==========
 	let allMembers = [];
 
 	function loadMembers(callback) {
+		console.log('[AJAX] GET /api/members');
 		$.get('/api/members', function (members) {
+			console.log('[AJAX OUT] /api/members =>', members);
 			allMembers = members; // Keep a copy for searching
 			renderMemberTable(members);
-			if(callback) callback(members);
+			if (callback) callback(members);
+		}).fail(function (xhr) {
+			console.error('[AJAX ERROR] GET /api/members', xhr);
 		});
 	}
 
 	function renderMemberTable(members) {
+		console.log('[RENDER] Member table with', members.length, 'rows');
 		const tbody = $('#membersTable tbody').empty();
 		members.forEach(m => {
 			const row = `<tr>
@@ -44,7 +54,7 @@ $(document).ready(function () {
 				<td>${m.name}</td>
 				<td>
 					<button class="viewPerksBtn" data-id="${m.member_id}">View Perks</button>
-					<button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
+					<button class="btn-edit editMemberBtn" data-id="${encodeURI(JSON.stringify(m))}">Edit</button>
 					<button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
 				</td>
 			</tr>`;
@@ -55,6 +65,7 @@ $(document).ready(function () {
 	// Filter table as you type
 	$('#memberSearch').on('input', function () {
 		const term = $(this).val().toLowerCase();
+		console.log('[SEARCH] term=', term);
 		if (!term) {
 			renderMemberTable(allMembers);
 			return;
@@ -64,10 +75,12 @@ $(document).ready(function () {
 			(m.name || '').toLowerCase().includes(term) ||
 			(m.tier_name || '').toLowerCase().includes(term)
 		);
+		console.log('[SEARCH] filtered count=', filtered.length);
 		renderMemberTable(filtered);
 	});
 
 	$('#addMemberBtn').click(() => {
+		console.log('[ACTION] Add Member');
 		$('#memberModalTitle').text('Add Member');
 		$('#memberModal input, #memberModal select').val('');
 		loadTiersIntoSelect('#tierField');
@@ -75,7 +88,8 @@ $(document).ready(function () {
 	});
 
 	$(document).on('click', '.editMemberBtn', function () {
-		const data = JSON.parse($(this).attr('data-id'));
+		const data = JSON.parse(decodeURI($(this).attr('data-id')));
+		console.log('[ACTION] Edit Member', data);
 		$('#memberModalTitle').text('Edit Member');
 		$('#memberIdInput').val(data.id);
 		$('#memberIdField').val(data.member_id);
@@ -94,36 +108,38 @@ $(document).ready(function () {
 		const date_of_birth = $('#dobField').val();
 
 		// 1. Check member_id is numeric
-		if(!/^\d+$/.test(member_id) || parseInt(member_id) === 0) {
+		if (!/^\d+$/.test(member_id) || parseInt(member_id) === 0) {
 			alert("Member ID must be a number greater than 0.");
 			return;
 		}
 		// 2. Check required fields
-		if(!member_id || !name || !tier_id || !sign_up_date) {
+		if (!member_id || !name || !tier_id || !sign_up_date) {
 			alert("Please fill in all fields except Date of Birth.");
 			return;
 		}
 
 		const member = {
-		id: $('#memberIdInput').val(),
+			id: $('#memberIdInput').val(),
 			member_id: member_id,
 			name: name,
 			tier_id: tier_id,
 			sign_up_date: sign_up_date,
 			date_of_birth: date_of_birth
 		};
+		console.log('[AJAX] POST /api/members =>', member);
 		$.ajax({
 			url: '/api/members',
 			type: 'POST',
 			data: JSON.stringify(member),
 			contentType: 'application/json',
 			success: () => {
+				console.log('[AJAX OUT] POST /api/members success');
 				closeTopModal();
 				loadMembers();
 			},
 			error: function (xhr) {
-				// 1. Unique member ID error
-				if(xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed')))
+				console.error('[AJAX ERROR] POST /api/members', xhr);
+				if (xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed')))
 					alert("Member ID must be unique.");
 				else alert("Failed to save member. Please try again.");
 			}
@@ -132,20 +148,30 @@ $(document).ready(function () {
 
 	$(document).on('click', '.deleteMemberBtn', function () {
 		const id = $(this).data('id');
-		if(confirm('Delete this member?'))
-			$.ajax({ url: `/api/members/${id}`, type: 'DELETE' }).done(loadMembers);
+		console.log('[AJAX] DELETE /api/members/' + id);
+		if (confirm('Delete this member?')) {
+			$.ajax({ url: `/api/members/${id}`, type: 'DELETE' })
+				.done(() => {
+					console.log('[AJAX OUT] DELETE /api/members/' + id + ' success');
+					loadMembers();
+				})
+				.fail(xhr => console.error('[AJAX ERROR] DELETE /api/members/' + id, xhr));
+		}
 	});
 
 	// ========== TIERS ==========
 	let allTiers = [];
 
 	$('#manageTiersBtn').click(() => {
+		console.log('[ACTION] Manage Tiers');
 		loadTiers();
 		openModal('tiersModal');
 	});
 
 	function loadTiers(callback) {
+		console.log('[AJAX] GET /api/tiers');
 		$.get('/api/tiers', tiers => {
+			console.log('[AJAX OUT] /api/tiers =>', tiers);
 			allTiers = tiers;
 			const ul = $('#tiersList').empty();
 			tiers.forEach(t => {
@@ -159,11 +185,12 @@ $(document).ready(function () {
 				</li>`);
 			});
 			loadMembers();
-			if(callback) callback(tiers);
-		});
+			if (callback) callback(tiers);
+		}).fail(xhr => console.error('[AJAX ERROR] GET /api/tiers', xhr));
 	}
 
 	$('#createTierBtn').click(() => {
+		console.log('[ACTION] Create Tier');
 		$('#tierModalTitle').text('Create Tier');
 		$('#tierIdInput').val('');
 		$('#tierNameField').val('');
@@ -173,6 +200,7 @@ $(document).ready(function () {
 
 	$(document).on('click', '.editTierBtn', function () {
 		const t = JSON.parse($(this).attr('data-id'));
+		console.log('[ACTION] Edit Tier', t);
 		$('#tierModalTitle').text('Edit Tier');
 		$('#tierIdInput').val(t.id);
 		$('#tierNameField').val(t.name);
@@ -186,18 +214,20 @@ $(document).ready(function () {
 			name: $('#tierNameField').val(),
 			color: $('#tierColorField').val()
 		};
+		console.log('[AJAX] POST /api/tiers =>', tier);
 		$.ajax({
 			url: '/api/tiers',
 			type: 'POST',
 			data: JSON.stringify(tier),
 			contentType: 'application/json',
 			success: () => {
+				console.log('[AJAX OUT] POST /api/tiers success');
 				closeTopModal();
 				loadTiers();
 			},
 			error: function (xhr) {
-				// If unique constraint or duplicate error
-				if(xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed')))
+				console.error('[AJAX ERROR] POST /api/tiers', xhr);
+				if (xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed')))
 					alert("Tier name must be unique.");
 				else alert("Failed to save tier. Please try again.");
 			}
@@ -206,13 +236,21 @@ $(document).ready(function () {
 
 	$(document).on('click', '.deleteTierBtn', function () {
 		const id = $(this).data('id');
-		if(confirm('Delete this tier?'))
-			$.ajax({ url: `/api/tiers/${id}`, type: 'DELETE' }).done(loadTiers);
+		console.log('[AJAX] DELETE /api/tiers/' + id);
+		if (confirm('Delete this tier?')) {
+			$.ajax({ url: `/api/tiers/${id}`, type: 'DELETE' })
+				.done(() => {
+					console.log('[AJAX OUT] DELETE /api/tiers/' + id + ' success');
+					loadTiers();
+				})
+				.fail(xhr => console.error('[AJAX ERROR] DELETE /api/tiers/' + id, xhr));
+		}
 	});
 
 	// ========== TIER PERKS ==========
 	$(document).on('click', '.manageTierPerksBtn', function () {
 		currentTierId = $(this).data('id');
+		console.log('[ACTION] Manage Perks for Tier', currentTierId);
 		loadTierPerks(currentTierId);
 		const tier = allTiers.find(t => t.id == currentTierId);
 		$('#tierPerksModal .tierName').text(tier ? `${tier.name}` : '');
@@ -220,8 +258,11 @@ $(document).ready(function () {
 	});
 
 	function loadTierPerks(tierId) {
+		console.log(`[AJAX] GET /api/perks then /api/tier_perks/${tierId}`);
 		$.get(`/api/perks`, allPerks => {
+			console.log('[AJAX OUT] /api/perks =>', allPerks);
 			$.get(`/api/tier_perks/${tierId}`, assigned => {
+				console.log(`[AJAX OUT] /api/tier_perks/${tierId} =>`, assigned);
 				const assignedIds = assigned.map(p => p.id);
 				const available = allPerks.filter(p => !assignedIds.includes(p.id));
 
@@ -242,40 +283,49 @@ $(document).ready(function () {
 						<button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
 					</li>`);
 				});
-			});
-		});
+			}).fail(xhr => console.error('[AJAX ERROR] GET /api/tier_perks/' + tierId, xhr));
+		}).fail(xhr => console.error('[AJAX ERROR] GET /api/perks', xhr));
 	}
 
 	$(document).on('click', '.assignPerkBtn', function () {
 		const perkId = $(this).data('id');
+		const payload = { tier_id: currentTierId, perk_id: perkId };
+		console.log('[AJAX] POST /api/tier_perks =>', payload);
 		$.ajax({
 			url: '/api/tier_perks',
 			type: 'POST',
-			data: JSON.stringify({ tier_id: currentTierId, perk_id: perkId }),
+			data: JSON.stringify(payload),
 			contentType: 'application/json',
 			success: () => {
+				console.log('[AJAX OUT] POST /api/tier_perks success');
 				loadTierPerks(currentTierId);
 				loadMembers();
-			}
+			},
+			error: xhr => console.error('[AJAX ERROR] POST /api/tier_perks', xhr)
 		});
 	});
 
 	$(document).on('click', '.unassignPerkBtn', function () {
 		const perkId = $(this).data('id');
+		const payload = { tier_id: currentTierId, perk_id: perkId };
+		console.log('[AJAX] DELETE /api/tier_perks =>', payload);
 		$.ajax({
 			url: '/api/tier_perks',
 			type: 'DELETE',
-			data: JSON.stringify({ tier_id: currentTierId, perk_id: perkId }),
+			data: JSON.stringify(payload),
 			contentType: 'application/json',
 			success: () => {
+				console.log('[AJAX OUT] DELETE /api/tier_perks success');
 				loadTierPerks(currentTierId);
 				loadMembers();
-			}
+			},
+			error: xhr => console.error('[AJAX ERROR] DELETE /api/tier_perks', xhr)
 		});
 	});
 
 	// ========== PERK CRUD ==========
 	$('#createPerkBtn').click(() => {
+		console.log('[ACTION] Create Perk');
 		$('#perkModalTitle').text('Create Perk');
 		$('#perkIdInput').val('');
 		$('#perkNameField').val('');
@@ -285,6 +335,7 @@ $(document).ready(function () {
 
 	$(document).on('click', '.editPerkBtn', function () {
 		const p = JSON.parse($(this).attr('data-id'));
+		console.log('[ACTION] Edit Perk', p);
 		$('#perkModalTitle').text('Edit Perk');
 		$('#perkIdInput').val(p.id);
 		$('#perkNameField').val(p.name);
@@ -298,36 +349,44 @@ $(document).ready(function () {
 			name: $('#perkNameField').val(),
 			reset_period: $('#perkResetField').val()
 		};
+		console.log('[AJAX] POST /api/perks =>', perk);
 		$.ajax({
 			url: '/api/perks',
 			type: 'POST',
 			data: JSON.stringify(perk),
 			contentType: 'application/json',
 			success: () => {
+				console.log('[AJAX OUT] POST /api/perks success');				
 				closeTopModal();
 				loadTierPerks(currentTierId);
 				loadMembers();
-			}
+			},
+			error: xhr => console.error('[AJAX ERROR] POST /api/perks', xhr)
 		});
 	});
 
 	$(document).on('click', '.deletePerkBtn', function () {
 		const perkId = $(this).data('id');
-		if(confirm('Delete this perk?')) {
-			$.ajax({ url: `/api/perks/${perkId}`, type: 'DELETE' }).done(() => {
-				loadTierPerks(currentTierId);
-				loadMembers();
-			});
+		console.log('[AJAX] DELETE /api/perks/' + perkId);
+		if (confirm('Delete this perk?')) {
+			$.ajax({ url: `/api/perks/${perkId}`, type: 'DELETE' })
+				.done(() => {
+					console.log('[AJAX OUT] DELETE /api/perks/' + perkId + ' success');
+					loadTierPerks(currentTierId);
+					loadMembers();
+				})
+				.fail(xhr => console.error('[AJAX ERROR] DELETE /api/perks/' + perkId, xhr));
 		}
 	});
 
 	// ========== MEMBER PERKS ==========
-	// rendering perk items inside #perksList
 	$(document).on('click', '.viewPerksBtn', function () {
 		currentMemberId = $(this).data('id');
 		const member = allMembers.find(m => m.member_id == currentMemberId);
 		$('#perksModal .memberName').text(member ? `${member.name}` : '');
+		console.log('[AJAX] GET /api/member_perks/' + currentMemberId);
 		$.get(`/api/member_perks/${currentMemberId}`, perks => {
+			console.log('[AJAX OUT] /api/member_perks/' + currentMemberId + ' =>', perks);
 			const ul = $('#perksList').empty();
 			perks.forEach(p => {
 				const claimed = p.last_claimed !== null && p.last_claimed !== undefined;
@@ -335,63 +394,81 @@ $(document).ready(function () {
 				let html = `<li class="perk-item">`;
 				html += `<div><strong>${p.name}</strong> <span class="reset-period">(${p.reset_period})</span></div>`;
 
-				if(!isUnlimited) {
+				if (!isUnlimited) {
 					html += `<div class="perk-meta">`;
-					if(claimed) {
+					if (claimed) {
 						html += `<div class="perk-dates">
 							<div>Claimed On: ${formatDMY(p.last_claimed)}</div>
 							<div>Resets On: ${formatDMY(p.next_reset_date)}</div>
 						</div>`;
 						html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
 						html += `<span class="badge-claimed">Claimed</span>`;
-					} else html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button>`;
+					} else {
+						html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button>`;
+					}
 					html += `</div>`;
 				}
 				html += `</li>`;
 				ul.append(html);
 			});
 			openModal('perksModal');
-		});
+		}).fail(xhr => console.error('[AJAX ERROR] GET /api/member_perks/' + currentMemberId, xhr));
 	});
 
 	function formatDMY(dateString) {
-		if(!dateString || dateString === '-' || dateString === 'null') return '-';
+		if (!dateString || dateString === '-' || dateString === 'null') return '-';
 		const [y, m, d] = dateString.split('-');
 		return `${d}-${m}-${y}`;
 	}
 
 	$(document).on('click', '.claimPerkBtn', function () {
 		const perkId = $(this).data('id');
-		if(confirm('Claim this perk?')) {
+		const payload = { member_id: currentMemberId, perk_id: perkId };
+		console.log('[AJAX] POST /api/member_perks/claim =>', payload);
+		if (confirm('Claim this perk?')) {
 			$.ajax({
 				url: '/api/member_perks/claim',
 				type: 'POST',
-				data: JSON.stringify({ member_id: currentMemberId, perk_id: perkId }),
+				data: JSON.stringify(payload),
 				contentType: 'application/json',
-				success: () => { $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click(); }
+				success: () => {
+					console.log('[AJAX OUT] POST /api/member_perks/claim success');
+					$(`.viewPerksBtn[data-id="${currentMemberId}"]`).click();
+				},
+				error: xhr => console.error('[AJAX ERROR] POST /api/member_perks/claim', xhr)
 			});
 		}
 	});
 
 	$(document).on('click', '.resetPerkBtn', function () {
 		const perkId = $(this).data('id');
-		if(confirm('Reset this perk?')) {
+		const payload = { member_id: currentMemberId, perk_id: perkId };
+		console.log('[AJAX] POST /api/member_perks/reset =>', payload);
+		if (confirm('Reset this perk?')) {
 			$.ajax({
 				url: '/api/member_perks/reset',
 				type: 'POST',
-				data: JSON.stringify({ member_id: currentMemberId, perk_id: perkId }),
+				data: JSON.stringify(payload),
 				contentType: 'application/json',
-				success: () => { $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click(); }
+				success: () => {
+					console.log('[AJAX OUT] POST /api/member_perks/reset success');
+					$(`.viewPerksBtn[data-id="${currentMemberId}"]`).click();
+				},
+				error: xhr => console.error('[AJAX ERROR] POST /api/member_perks/reset', xhr)
 			});
 		}
 	});
 
 	// ========== HELPERS ==========
 	function loadTiersIntoSelect(selector, selectedId = null) {
+		console.log('[AJAX] GET /api/tiers for select', selector);
 		$.get('/api/tiers', tiers => {
+			console.log('[AJAX OUT] /api/tiers for select =>', tiers);
 			const sel = $(selector).empty();
-			tiers.forEach(t => { sel.append(`<option value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
-		});
+			tiers.forEach(t => {
+				sel.append(`<option value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`);
+			});
+		}).fail(xhr => console.error('[AJAX ERROR] GET /api/tiers for select', xhr));
 	}
 
 	// Initial load
