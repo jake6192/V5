@@ -436,6 +436,7 @@ def get_member_perks(member_id):
         perks = [dict(row) for row in c.fetchall()]
         return jsonify(perks)
     finally:
+        conn.commit()
         conn.close()
 
 @app.route('/api/member_perks/claim', methods=['POST'])
