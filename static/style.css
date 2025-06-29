@@ -13,6 +13,9 @@ header {
   padding: 10px 20px;
   justify-content: flex-start;
   border-bottom: 4px groove #6a6;
+  position: fixed;
+  top: 0;
+  width: 100%;
 }
 header .brand {
   display: flex;
@@ -46,6 +49,7 @@ small {
 .top-buttons {
   text-align: center;
   margin: 16px 0;
+  width: 100%;
 }
 
 .top-buttons button {
@@ -63,7 +67,7 @@ small {
 
 table {
   width: 90%;
-  margin: 0 auto;
+  margin: 125px auto 0;
   border-collapse: collapse;
   background: white;
   box-shadow: 0 0 12px rgba(0,0,0,0.9);
