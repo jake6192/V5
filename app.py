@@ -18,6 +18,12 @@ CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    print("[FLASK ERRORHANDLER]", traceback.format_exc())
+    return "Internal server error", 500
+
 @app.route('/download-db')
 def download_db():
     pw = request.args.get("pw", "")
@@ -439,10 +445,13 @@ def get_member_perks(member_id):
         conn.commit()
         conn.close()
 
+import traceback
+
 @app.route('/api/member_perks/claim', methods=['POST'])
 def claim_perk():
     data = request.json
     now = datetime.now().strftime("%Y-%m-%d")
+    print(f"[CLAIM] member_id={data['member_id']}, perk_id={data['perk_id']}, now={now}")
     conn = get_connection()
     try:
         c = conn.cursor()
@@ -461,17 +470,34 @@ def claim_perk():
         next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
 
         # INSERT new perk claim for member
-        c.execute('''
+        print(f"[CLAIM SQL] INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date) VALUES ({data['member_id']}, {data['perk_id']}, {now}, {next_reset})")
+        try:
+            c.execute('''
                 INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
                 VALUES (?, ?, ?, ?)
             ''', (data['member_id'], data['perk_id'], now, next_reset))
-        conn.commit()
-        return ('OK', 200)
+            conn.commit()
+
+            # Log: did the row actually get inserted?
+            c.execute('SELECT * FROM member_perks WHERE member_id=? AND perk_id=?', (data['member_id'], data['perk_id']))
+            row = c.fetchone()
+            if row:
+                print(f"[CLAIM VERIFY] Row now exists: {dict(row)}")
+            else:
+                print(f"[CLAIM VERIFY] Row NOT found immediately after insert/commit for member_id={data['member_id']}, perk_id={data['perk_id']}")
+
+            print("[CLAIM SUCCESS]")
+            return ('OK', 200)
+        except Exception as e:
+            print(f"[CLAIM ERROR] {repr(e)}")
+            print(traceback.format_exc())
+            return (f"Claim failed: {str(e)}", 500)
     finally:
         conn.close()
 
 @app.route('/api/member_perks/reset', methods=['POST'])
 def reset_perk():
+    print(f"reset called")
     data = request.json
     conn = get_connection()
     try:
