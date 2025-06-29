@@ -27,11 +27,10 @@ $(document).ready(function () {
 	// ========== MEMBERS ==========
 	let allMembers = [];
 
-	function loadMembers(callback) {
+	function loadMembers() {
 		$.get('/api/members', function (members) {
 			allMembers = members; // Keep a copy for searching
 			renderMemberTable(members);
-			if(callback) callback(members);
 		});
 	}
 
@@ -340,7 +339,7 @@ $(document).ready(function () {
 					if(claimed) {
 						html += `<div class="perk-dates">
 							<div>Claimed On: ${formatDMY(p.last_claimed)}</div>
-							<div>Resets On: ${formatDMY(p.next_reset_date)}</div>
+							<div>Resets On: ${formatDMY(p.next_reset_date||p.last_claimed.split(' ')[0].split('-').map((e,i)=>i==0?+e+1:e).join('-'))}</div> // DO NOT (DELETE)/(CHANGE THE FUNCTIONALITY OF) THIS LINE //
 						</div>`;
 						html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
 						html += `<span class="badge-claimed">Claimed</span>`;
@@ -356,8 +355,8 @@ $(document).ready(function () {
 
 	function formatDMY(dateString) {
 		if(!dateString || dateString === '-' || dateString === 'null') return '-';
-		const [y, m, d] = dateString.split('-');
-		return `${d}-${m}-${y}`;
+		const d_t=dateString.split` `, [y, m, d] = d_t[0].split('-');
+		return `${d}-${m}-${y} `+(d_t[1]||'');
 	}
 
 	$(document).on('click', '.claimPerkBtn', function () {

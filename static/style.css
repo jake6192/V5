@@ -88,6 +88,8 @@ th {
 
 tr:hover .viewPerksBtn {
   visibility: visible;
+  cursor: pointer;
+  margin-left: 0 !important;
 }
 
 .viewPerksBtn {
@@ -107,6 +109,7 @@ button.editMemberBtn {
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 18px;
+  margin-left: 5px;
 }
 
 button.deleteMemberBtn {
@@ -119,8 +122,10 @@ button.deleteMemberBtn {
   font-size: 18px;
 }
 
-button.editMemberBtn:hover {
+button.deleteMemberBtn:hover, button.editMemberBtn:hover, button.viewPerksBtn:hover {
   background-color: #126953;
+  border: 1px inset #fff;
+  margin: -5px 0 -5px 4px;
 }
 
 button.deleteMemberBtn:hover {
