@@ -16,21 +16,33 @@ $(document).ready(function () {
     if(id) $(`#${id}`).hide();
   }
 
-  $('.close').on('click', closeTopModal);
+  $('.close').on('click', function () {
+    closeTopModal();
+  });
 
-  window.onclick = e => {  if($(event.target).hasClass('modal')) closeTopModal(); };
+  window.onclick = function (event) {
+    if($(event.target).hasClass('modal')) closeTopModal();
+  };
 
   // ========== MEMBERS ==========
-  let loadMembers = (tbody=$('#membersTable tbody').empty()) => $.get('/api/members', members => members.forEach(m => tbody.append(`<tr>
-	<td>${m.member_id}</td>
-	<td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
-	<td>${m.name}</td>
-	<td>
+  function loadMembers() {
+    $.get('/api/members', function (members) {
+      const tbody = $('#membersTable tbody').empty();
+      members.forEach(m => {
+        const row = `<tr>
+          <td>${m.member_id}</td>
+          <td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
+          <td>${m.name}</td>
+          <td>
+            <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
+            <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
+          </td>
+        </tr>`;
+        tbody.append(row);
+      });
+    });
+  }
 	  <button class="viewPerksBtn" data-id="${m.member_id}">Claim Perks</button>
-	  <button class="btn-edit editMemberBtn" data-id='${JSON.stringify(m)}'>Edit</button>
-	  <button class="btn-delete deleteMemberBtn" data-id="${m.member_id}">Delete</button>
-	</td>
-  </tr>`)));
 
   $('#addMemberBtn').click(() => {
     $('#memberModalTitle').text('Add Member');
@@ -39,7 +51,7 @@ $(document).ready(function () {
     openModal('memberModal');
   });
 
-  $(document).on('click', '.editMemberBtn', () => {
+  $(document).on('click', '.editMemberBtn', function () {
     const data = JSON.parse($(this).attr('data-id'));
     $('#memberModalTitle').text('Edit Member');
     $('#memberIdInput').val(data.id);
@@ -88,17 +100,20 @@ $(document).ready(function () {
       },
       error: function (xhr) {
         // 1. Unique member ID error
-        if(xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed')))
+        if(xhr.status === 409 || (xhr.responseText && xhr.responseText.includes('UNIQUE constraint failed'))) {
           alert("Member ID must be unique.");
-        else alert("Failed to save member. Please try again.");
+        } else {
+          alert("Failed to save member. Please try again.");
+        }
       }
     });
   });
 
   $(document).on('click', '.deleteMemberBtn', function () {
     const id = $(this).data('id');
-    if(confirm('Delete this member?'))
+    if(confirm('Delete this member?')) {
       $.ajax({ url: `/api/members/${id}`, type: 'DELETE' }).done(loadMembers);
+    }
   });
 
   // ========== TIERS ==========
@@ -110,26 +125,29 @@ $(document).ready(function () {
   function loadTiers() {
     $.get('/api/tiers', tiers => {
       const ul = $('#tiersList').empty();
-      tiers.forEach(t => ul.append(`<li>
-        <span class="tier-badge" style="background-color:${t.color}">${t.name}</span>
-        <span class="tier-actions">
-          <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
-          <button class="btn-edit editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
-          <button class="btn-delete deleteTierBtn" data-id="${t.id}">Delete Tier</button>
-        </span>
-      </li>`));
+      tiers.forEach(t => {
+        ul.append(`<li>
+          <span class="tier-badge" style="background-color:${t.color}">${t.name}</span>
+          <span class="tier-actions">
+            <button class="manageTierPerksBtn" data-id="${t.id}">Manage Perks</button>
+            <button class="btn-edit editTierBtn" data-id='${JSON.stringify(t)}'>Edit Tier</button>
+            <button class="btn-delete deleteTierBtn" data-id="${t.id}">Delete Tier</button>
+          </span>
+        </li>`);
+      });
       loadMembers();
     });
   }
 
   $('#createTierBtn').click(() => {
     $('#tierModalTitle').text('Create Tier');
-    $('#tierIdInput, #tierNameField').val('');
+    $('#tierIdInput').val('');
+    $('#tierNameField').val('');
     $('#tierColorField').val('#000000');
     openModal('tierModal');
   });
 
-  $(document).on('click', '.editTierBtn', () => {
+  $(document).on('click', '.editTierBtn', function () {
     const t = JSON.parse($(this).attr('data-id'));
     $('#tierModalTitle').text('Edit Tier');
     $('#tierIdInput').val(t.id);
@@ -162,39 +180,48 @@ $(document).ready(function () {
     });
   });
 
-  $(document).on('click', '.deleteTierBtn', () => {
+  $(document).on('click', '.deleteTierBtn', function () {
     const id = $(this).data('id');
-    if(confirm('Delete this tier?'))
+    if(confirm('Delete this tier?')) {
       $.ajax({ url: `/api/tiers/${id}`, type: 'DELETE' }).done(loadTiers);
+    }
   });
 
   // ========== TIER PERKS ==========
   $(document).on('click', '.manageTierPerksBtn', function () {
-    loadTierPerks($(this).data('id'));
+    currentTierId = $(this).data('id');
+    loadTierPerks(currentTierId);
     openModal('tierPerksModal');
   });
 
   function loadTierPerks(tierId) {
-    $.get(`/api/perks`, allPerks => $.get(`/api/tier_perks/${tierId}`, assigned => {
-      const assignedIds = assigned.map(p => p.id),
-			available = allPerks.filter(p => !assignedIds.includes(p.id));
+    $.get(`/api/perks`, allPerks => {
+      $.get(`/api/tier_perks/${tierId}`, assigned => {
+        const assignedIds = assigned.map(p => p.id);
+        const available = allPerks.filter(p => !assignedIds.includes(p.id));
 
-      $('#assignedPerksList, #availablePerksList').empty();
-      assigned.forEach(p => $('#assignedPerksList').append(`<li>
-        <span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
-        <button class="btn-delete unassignPerkBtn" data-id="${p.id}">Unassign Perk</button>
-      </li>`));
+        $('#assignedPerksList').empty();
+        assigned.forEach(p => {
+          $('#assignedPerksList').append(`<li>
+            <span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
+            <button class="btn-delete unassignPerkBtn" data-id="${p.id}">Unassign Perk</button>
+          </li>`);
+        });
 
-      available.forEach(p = $('#availablePerksList').append(`<li>
-        <span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
-        <button class="btn-edit assignPerkBtn" data-id="${p.id}">Assign Perk</button>
-        <button class="btn-edit editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
-        <button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
-      </li>`));
-    }));
+        $('#availablePerksList').empty();
+        available.forEach(p => {
+          $('#availablePerksList').append(`<li>
+            <span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
+            <button class="btn-edit assignPerkBtn" data-id="${p.id}">Assign Perk</button>
+            <button class="btn-edit editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
+            <button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
+          </li>`);
+        });
+      });
+    });
   }
 
-  $(document).on('click', '.assignPerkBtn', () => {
+  $(document).on('click', '.assignPerkBtn', function () {
     const perkId = $(this).data('id');
     $.ajax({
       url: '/api/tier_perks',
