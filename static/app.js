@@ -394,5 +394,10 @@ $(document).ready(function () {
 	}
 
 	// Initial load
-	loadMembers();
+	function tick() {
+		loadMembers();
+		// Keep the server active with a data refresh every 10-14.1 minutes. //
+		window.setTimeout(tick, Math.floor(Math.random() * (850000 - 600000 + 1) + 600000));
+	}
+	tick();
 });
