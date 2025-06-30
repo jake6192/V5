@@ -82,6 +82,7 @@ $(document).ready(function () {
 		$('#signUpDateField').val(data.sign_up_date);
 		$('#dobField').val(data.date_of_birth);
 		loadTiersIntoSelect('#tierField', data.tier_id);
+		$('#tierField').css({ "background-color": data.color });
 		openModal('memberModal');
 	});
 
@@ -177,6 +178,10 @@ $(document).ready(function () {
 		$('#tierNameField').val(t.name);
 		$('#tierColorField').val(t.color);
 		openModal('tierModal');
+	});
+	
+	$('#tierField').change(function() {
+		$(this).css('background-color', $(`#tierField > option[value=${$(this).val()}]`).css('background-color'));
 	});
 
 	$('#saveTierBtn').click(() => {
@@ -389,7 +394,7 @@ $(document).ready(function () {
 	function loadTiersIntoSelect(selector, selectedId = null) {
 		$.get('/api/tiers', tiers => {
 			const sel = $(selector).empty();
-			tiers.forEach(t => { sel.append(`<option value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
+			tiers.forEach(t => { sel.append(`<option style="background-color: ${t.color};" value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
 		});
 	}
 

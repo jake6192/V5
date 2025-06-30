@@ -117,6 +117,8 @@ button.editMemberBtn {
   margin-left: 5px;
 }
 
+#tierField { color: #fff; border-radius: 3px; }
+
 button.deleteMemberBtn {
   background-color: #d11a2a;
   color: white;
