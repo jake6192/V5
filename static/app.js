@@ -1,14 +1,32 @@
 // static/app.js
 
 $(document).ready(function () {
-	let currentTierId = null;
-	let currentMemberId = null;
-	let modalStack = [];
+	let currentTierId = null,
+	    currentMemberId = null,
+	    modalStack = [],
+	    showUnlimited = !0;
+
+	// helper: show/hide any <li> whose .reset-period text is "Unlimited"
+	function applyUnlimitedFilter(){
+		$('li').has('.reset-period:contains("Unlimited")').each(function(){
+			$(this).toggle(!showUnlimited);console.log(this);
+		});
+	}
+	// toggle listener for both checkboxes
+	$('#toggleUnlimitedMember,#toggleUnlimitedTier').on('change',function(){
+		showUnlimited=$(this).is(':checked');
+		$('#toggleUnlimitedMember,#toggleUnlimitedTier').prop('checked',showUnlimited);
+		applyUnlimitedFilter();
+	});
 
 	// ========== MODAL HANDLERS ==========
 	function openModal(id) {
 		$(`#${id}`).show();
 		modalStack.push(id);
+		if(id==='perksModal'||id==='tierPerksModal'){
+			$('#toggleUnlimitedMember,#toggleUnlimitedTier').prop('checked',showUnlimited);
+			applyUnlimitedFilter();
+		}
 	}
 
 	function closeTopModal() {
@@ -82,7 +100,6 @@ $(document).ready(function () {
 		$('#signUpDateField').val(data.sign_up_date);
 		$('#dobField').val(data.date_of_birth);
 		loadTiersIntoSelect('#tierField', data.tier_id);
-		$('#tierField').css({ "background-color": data.color });
 		openModal('memberModal');
 	});
 
@@ -179,10 +196,6 @@ $(document).ready(function () {
 		$('#tierColorField').val(t.color);
 		openModal('tierModal');
 	});
-	
-	$('#tierField').change(function() {
-		$(this).css('background-color', $(`#tierField > option[value=${$(this).val()}]`).css('background-color'));
-	});
 
 	$('#saveTierBtn').click(() => {
 		const tier = {
@@ -232,7 +245,7 @@ $(document).ready(function () {
 				$('#assignedPerksList').empty();
 				assigned.forEach(p => {
 					$('#assignedPerksList').append(`<li>
-					<span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
+					<span>${p.name}</span><small class="reset-period">&nbsp;(${p.reset_period})</small>
 					<button class="btn-delete unassignPerkBtn" data-id="${p.id}">Unassign Perk</button>
 					</li>`);
 				});
@@ -240,12 +253,13 @@ $(document).ready(function () {
 				$('#availablePerksList').empty();
 				available.forEach(p => {
 					$('#availablePerksList').append(`<li>
-						<span>${p.name}</span><small>&nbsp;(${p.reset_period})</small>
+						<span>${p.name}</span><small class="reset-period">&nbsp;(${p.reset_period})</small>
 						<button class="btn-edit assignPerkBtn" data-id="${p.id}">Assign Perk</button>
 						<button class="btn-edit editPerkBtn" data-id='${JSON.stringify(p)}'>Edit Perk</button>
 						<button class="btn-delete deletePerkBtn" data-id="${p.id}">Delete Perk</button>
 					</li>`);
 				});
+				applyUnlimitedFilter();
 			});
 		});
 	}
@@ -337,7 +351,7 @@ $(document).ready(function () {
 				const claimed = p.last_claimed !== null && p.last_claimed !== undefined;
 				const isUnlimited = p.reset_period === 'Unlimited';
 				let html = `<li class="perk-item">`;
-				html += `<div><strong>${p.name}</strong> <span class="reset-period">(${p.reset_period})</span></div>`;
+				html += `<div><strong>${p.name}</strong> <small class="reset-period">(${p.reset_period})</small></div>`;
 
 				if(!isUnlimited) {
 					html += `<div class="perk-meta">`;
@@ -394,7 +408,7 @@ $(document).ready(function () {
 	function loadTiersIntoSelect(selector, selectedId = null) {
 		$.get('/api/tiers', tiers => {
 			const sel = $(selector).empty();
-			tiers.forEach(t => { sel.append(`<option style="background-color: ${t.color};" value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
+			tiers.forEach(t => { sel.append(`<option value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
 		});
 	}
 
