@@ -200,9 +200,9 @@ def create_or_edit_member():
             old_member_id = old['member_id'] if old else None
             # Update the member row
             c.execute('''
-                UPDATE members SET member_id=?, name=?, tier_id=?, sign_up_date=?, date_of_birth=?
+                UPDATE members SET member_id=?, name=?, tier_id=?, sign_up_date=?, date_of_birth=?, location=?
                 WHERE id=?
-            ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['id']))
+            ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location'], data['id']))
             # If member_id changed, update all member_perks rows
             if old_member_id and str(old_member_id) != str(data['member_id']):
                 c.execute('''
@@ -226,9 +226,9 @@ def create_or_edit_member():
                               (next_reset, mid, perk['perk_id']))
         else:
             c.execute('''
-                INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth']))
+                INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
         conn.commit()
         return ('OK', 200)
     finally:

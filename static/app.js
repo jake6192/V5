@@ -57,6 +57,7 @@ $(document).ready(function () {
 		members.forEach(m => {
 			const row = `<tr>
 				<td>${m.member_id}</td>
+				<td>${m.location}</td>
 				<td><span class="tier-badge" style="background-color:${m.color || '#888'}">${m.tier_name}</span></td>
 				<td>${m.name}</td>
 				<td>
@@ -86,8 +87,8 @@ $(document).ready(function () {
 
 	$('#addMemberBtn').click(() => {
 		$('#memberModalTitle').text('Add Member');
-		$('#memberModal input, #memberModal select').val('');
-		loadTiersIntoSelect('#tierField');
+		$('#memberModal input, #tierField').val('');
+		loadTiersIntoSelect('new', '#tierField');
 		openModal('memberModal');
 	});
 
@@ -96,16 +97,18 @@ $(document).ready(function () {
 		$('#memberModalTitle').text('Edit Member');
 		$('#memberIdInput').val(data.id);
 		$('#memberIdField').val(data.member_id);
+		$('#locationField').val(data.location);
 		$('#nameField').val(data.name);
 		$('#signUpDateField').val(data.sign_up_date);
 		$('#dobField').val(data.date_of_birth);
-		loadTiersIntoSelect('#tierField', data.tier_id);
+		loadTiersIntoSelect('edit', '#tierField', data.tier_id);
 		openModal('memberModal');
 	});
 
 	$('#saveMemberBtn').click(() => {
 		const member_id = $('#memberIdField').val();
 		const name = $('#nameField').val();
+		const location = $('#locationField').val();
 		const tier_id = $('#tierField').val();
 		const sign_up_date = $('#signUpDateField').val();
 		const date_of_birth = $('#dobField').val();
@@ -125,6 +128,7 @@ $(document).ready(function () {
 		id: $('#memberIdInput').val(),
 			member_id: member_id,
 			name: name,
+			location: location,
 			tier_id: tier_id,
 			sign_up_date: sign_up_date,
 			date_of_birth: date_of_birth
@@ -405,10 +409,14 @@ $(document).ready(function () {
 	});
 
 	// ========== HELPERS ==========
-	function loadTiersIntoSelect(selector, selectedId = null) {
+	function loadTiersIntoSelect(type, selector, selectedId = null) {
 		$.get('/api/tiers', tiers => {
 			const sel = $(selector).empty();
 			tiers.forEach(t => { sel.append(`<option value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
+			if(type=='new')
+				$('#tierField option[value=2], #locationField option[value="Kings Langley"]').attr('selected', true); // DEFAULT TIER & LOCATION - Currently set to 'Casual Golfer' & 'Kings Langley' //
+			else if(type=='edit')
+				$(`#tierField option[value=${data.tier_id}], #locationField option[value="${data.location}"]`).attr('selected', true);
 		});
 	}
 

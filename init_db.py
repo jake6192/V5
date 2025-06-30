@@ -26,6 +26,7 @@ CREATE TABLE members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     member_id INTEGER UNIQUE,
     name TEXT,
+    location TEXT,
     tier_id INTEGER,
     sign_up_date TEXT,
     date_of_birth TEXT,

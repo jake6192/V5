@@ -117,7 +117,7 @@ button.editMemberBtn {
   margin-left: 5px;
 }
 
-#tierField { border-radius: 3px; }
+.modal select { border-radius: 3px; }
 
 button.deleteMemberBtn {
   background-color: #d11a2a;

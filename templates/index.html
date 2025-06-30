@@ -30,7 +30,8 @@
     <thead>
       <tr>
         <th style="width: 70px;">ID</th>
-        <th style="width: 350px;">Tier</th>
+        <th style="width: 250px;">Location</th>
+        <th style="width: 250px;">Tier</th>
         <th>Name</th>
         <th style="width: 270px;">Actions</th>
       </tr>
@@ -48,6 +49,12 @@
       <input type="hidden" id="memberIdInput">
       <label>Member ID: <input type="number" id="memberIdField"></label>
       <label>Name: <input type="text" id="nameField"></label>
+      <label>Location:
+        <select id="locationField">
+          <option value="Kings Langley" selected>Kings Langley</option>
+          <option value="Berkhamsted" disabled>Berkhamsted</option>
+        </select>
+      </label>
       <label>Tier: <select id="tierField"></select></label>
       <label>Sign Up Date: <input type="date" id="signUpDateField"></label>
       <label>Date of Birth: <input type="date" id="dobField"></label>
