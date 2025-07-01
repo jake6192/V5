@@ -9,7 +9,7 @@ $(document).ready(function () {
 	// helper: show/hide any <li> whose .reset-period text is "Unlimited"
 	function applyUnlimitedFilter(){
 		$('li').has('.reset-period:contains("Unlimited")').each(function(){
-			$(this).toggle(!showUnlimited);console.log(this);
+			$(this).toggle(!showUnlimited);
 		});
 	}
 	// toggle listener for both checkboxes
@@ -88,9 +88,13 @@ $(document).ready(function () {
 
 	$('#addMemberBtn').click(() => {
 		$('#memberModalTitle').text('Add Member');
-		$('#memberModal input, #tierField').val('');
-		loadTiersIntoSelect('new', '#tierField');
-		openModal('memberModal');
+		$('#memberModal input').val('');
+		// DEFAULT TIER & LOCATION - Currently set to 'Casual Golfer' & 'Kings Langley' //
+		loadTiersIntoSelect('new', '#tierField', null, ()=>{
+			$('#locationField option[value="Kings Langley"]').prop('selected', true);
+			$('#tierField option[value="2"]').prop('selected', true);
+			openModal('memberModal');
+		});
 	});
 
 	$(document).on('click', '.editMemberBtn', function () {
@@ -410,22 +414,23 @@ $(document).ready(function () {
 	});
 
 	// ========== HELPERS ==========
-	function loadTiersIntoSelect(type, selector, selectedId = null) {
+	function loadTiersIntoSelect(type, selector, selectedId = null, callback) {
 		$.get('/api/tiers', tiers => {
 			const sel = $(selector).empty();
 			tiers.forEach(t => { sel.append(`<option value="${t.id}" ${t.id == selectedId ? 'selected' : ''}>${t.name}</option>`); });
-			if(type=='new')
-				$('#tierField option[value=2], #locationField option[value="Kings Langley"]').attr('selected', true); // DEFAULT TIER & LOCATION - Currently set to 'Casual Golfer' & 'Kings Langley' //
-			else if(type=='edit')
-				$(`#tierField option[value=${data.tier_id}], #locationField option[value="${data.location}"]`).attr('selected', true);
+			if(callback) callback(tiers);
 		});
 	}
 
-	// Initial load
 	function tick() {
-		loadMembers();
-		// Keep the server active with a data refresh every 10-14.1 minutes. //
-		window.setTimeout(tick, Math.floor(Math.random() * (850000 - 600000 + 1) + 600000));
+		// Keep the server active with a request. //
+		loadTiers(function(t) {
+			// And another, but at a random point in the next 8 minutes. //
+			setTimeout(()=>{ loadTierPerks(Math.floor(Math.random() * (t.length - 1 + 1) + 1)) }, Math.floor(Math.random() * (500000 - 200000 + 1) + 500000));
+			// And rerun this function every 10-14.1 minutes. //
+			window.setTimeout(tick, Math.floor(Math.random() * (850000 - 600000 + 1) + 600000));
+		});
 	}
+	// Initial load
 	tick();
 });
