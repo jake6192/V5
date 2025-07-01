@@ -80,6 +80,7 @@ $(document).ready(function () {
 		const filtered = allMembers.filter(m =>
 			(m.member_id + '').toLowerCase().includes(term) ||
 			(m.name || '').toLowerCase().includes(term) ||
+			(m.location || '').toLowerCase().includes(term) ||
 			(m.tier_name || '').toLowerCase().includes(term)
 		);
 		renderMemberTable(filtered);
