@@ -622,6 +622,33 @@ def reset_perk():
         return ('OK', 200)
     finally:
         conn.close()
+        
+def sync_loop(peer_ip: str):
+    sync_interval = 60  # seconds
+
+    while True:
+        try:
+            # Step 1: Try to pull from peer
+            r = requests.get(f'http://{peer_ip}:5000/sync/pull', timeout=10)
+            if r.status_code == 200:
+                remote_data = r.json()
+
+                # Step 2: Push that data into local instance
+                push = requests.post('http://localhost:5000/sync/push', json=remote_data, timeout=10)
+                if push.status_code == 200:
+                    print(f"[{time.strftime('%H:%M:%S')}] Sync success with {peer_ip}")
+                else:
+                    print(f"[{time.strftime('%H:%M:%S')}] Sync push failed: {push.status_code}")
+            else:
+                print(f"[{time.strftime('%H:%M:%S')}] Sync pull failed: {r.status_code}")
+        except Exception as e:
+            print(f"[{time.strftime('%H:%M:%S')}] Sync error: {e}")
+
+        time.sleep(sync_interval)
+
+# Example usage:
+peer_ip = "10.243.252.7"  # ZeroTier IP of the peer system
+threading.Thread(target=sync_loop, args=(peer_ip,), daemon=True).start()
 
 if __name__ == '__main__':
     app.run(debug=True)
