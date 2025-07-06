@@ -643,7 +643,8 @@ def sync_loop(peer_ip: str):
         time.sleep(sync_interval)
 
 # Example usage:
-peer_ip = "10.243.4.245"  # ZeroTier IP of the peer system
+#peer_ip = "10.243.4.245"  # ZeroTier IP of KL Laptop
+peer_ip = "10.243.252.7"  # ZeroTier IP of Jake's Laptop
 threading.Thread(target=sync_loop, args=(peer_ip,), daemon=True).start()
 
 if __name__ == '__main__':
