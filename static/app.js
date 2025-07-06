@@ -170,7 +170,7 @@ $(document).ready(function () {
 		openModal('tiersModal');
 	});
 
-	function loadTiers(callback) {
+	function loadTiers() {
 		$.get('/api/tiers', tiers => {
 			allTiers = tiers;
 			const ul = $('#tiersList').empty();
@@ -185,7 +185,6 @@ $(document).ready(function () {
 				</li>`);
 			});
 			loadMembers();
-			if(callback) callback(tiers);
 		});
 	}
 
@@ -422,15 +421,6 @@ $(document).ready(function () {
 		});
 	}
 
-	function tick() {
-		// Keep the server active with a request. //
-		loadTiers(function(t) {
-			// And another, but at a random point in the next 8 minutes. //
-			setTimeout(()=>{ loadTierPerks(Math.floor(Math.random() * (t.length - 1 + 1) + 1)) }, Math.floor(Math.random() * (500000 - 200000 + 1) + 500000));
-			// And rerun this function every 10-14.1 minutes. //
-			window.setTimeout(tick, Math.floor(Math.random() * (850000 - 600000 + 1) + 600000));
-		});
-	}
 	// Initial load
-	tick();
+	loadMembers();
 });
