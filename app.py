@@ -1,24 +1,22 @@
 # app.py
-from flask import Flask, request, jsonify, render_template, send_file, abort
+
+from flask import Flask, request, jsonify, render_template
 from datetime import datetime, timedelta
 from flask_cors import CORS
 import subprocess
-import threading
-import requests
-import logging
 import sqlite3
-import time
 import os
+from flask import request, send_file, abort
+
+# Auto-init the database if it's the first run
+if not os.path.exists('tracking.db'):
+    print("tracking.db not found. Running init_db.py...")
+    subprocess.run(['python', 'init_db.py'])
 
 app = Flask(__name__)
 CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
-
-# Auto-init the database if it's the first run
-if not os.path.exists(DB):
-    print("tracking.db not found. Running init_db.py...")
-    subprocess.run(['python', 'init_db.py'])
 
 @app.route('/download-db')
 def download_db():
@@ -34,127 +32,6 @@ def download_db():
             {}</div>
         '''.format("Incorrect password." if pw else "")
     return send_file('tracking.db', as_attachment=True)
-    
-@app.route('/sync/pull', methods=['GET'])
-def sync_pull():
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        data = {}
-        c.execute('SELECT * FROM members')
-        data['members'] = [dict(row) for row in c.fetchall()]
-        c.execute('SELECT * FROM tiers')
-        data['tiers'] = [dict(row) for row in c.fetchall()]
-        c.execute('SELECT * FROM perks')
-        data['perks'] = [dict(row) for row in c.fetchall()]
-        c.execute('SELECT * FROM tier_perks')
-        data['tier_perks'] = [dict(row) for row in c.fetchall()]
-        c.execute('SELECT * FROM member_perks')
-        data['member_perks'] = [dict(row) for row in c.fetchall()]
-        return jsonify(data)
-    finally:
-        conn.close()
-        
-@app.route('/sync/push', methods=['POST'])
-def sync_push():
-    data = request.get_json()
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        # Cache foreign key IDs to validate dependencies
-        c.execute('SELECT id FROM tiers')
-        valid_tiers = {row['id'] for row in c.fetchall()}
-        c.execute('SELECT id FROM perks')
-        valid_perks = {row['id'] for row in c.fetchall()}
-        c.execute('SELECT member_id FROM members')
-        valid_members = {row['member_id'] for row in c.fetchall()}
-        # --- Members
-        for row in data.get('members', []):
-            c.execute('''
-                INSERT INTO members (id, member_id, name, location, tier_id, sign_up_date, date_of_birth)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(member_id) DO UPDATE SET
-                    name=excluded.name,
-                    location=excluded.location,
-                    tier_id=excluded.tier_id,
-                    sign_up_date=excluded.sign_up_date,
-                    date_of_birth=excluded.date_of_birth
-            ''', (
-                row.get('id'),
-                row.get('member_id'),
-                row.get('name'),
-                row.get('location'),
-                row.get('tier_id'),
-                row.get('sign_up_date'),
-                row.get('date_of_birth')
-            ))
-        # Update tier/member ID sets after inserts
-        c.execute('SELECT id FROM tiers')
-        valid_tiers = {row['id'] for row in c.fetchall()}
-        c.execute('SELECT member_id FROM members')
-        valid_members = {row['member_id'] for row in c.fetchall()}
-        # --- Tiers
-        for row in data.get('tiers', []):
-            c.execute('''
-                INSERT INTO tiers (id, name, color)
-                VALUES (?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    name=excluded.name,
-                    color=excluded.color
-            ''', (
-                row.get('id'),
-                row.get('name'),
-                row.get('color')
-            ))
-        # --- Perks
-        for row in data.get('perks', []):
-            c.execute('''
-                INSERT INTO perks (id, name, reset_period)
-                VALUES (?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    name=excluded.name,
-                    reset_period=excluded.reset_period
-            ''', (
-                row.get('id'),
-                row.get('name'),
-                row.get('reset_period')
-            ))
-        # Refresh foreign keys again after all tier/perk/member inserts
-        c.execute('SELECT id FROM perks')
-        valid_perks = {row['id'] for row in c.fetchall()}
-        c.execute('SELECT id FROM tiers')
-        valid_tiers = {row['id'] for row in c.fetchall()}
-        c.execute('SELECT member_id FROM members')
-        valid_members = {row['member_id'] for row in c.fetchall()}
-        # --- Tier_perks
-        for row in data.get('tier_perks', []):
-            tier_id = row.get('tier_id')
-            perk_id = row.get('perk_id')
-            if tier_id in valid_tiers and perk_id in valid_perks:
-                c.execute('''
-                    INSERT OR IGNORE INTO tier_perks (tier_id, perk_id)
-                    VALUES (?, ?)
-                ''', (tier_id, perk_id))
-        # --- Member_perks
-        for row in data.get('member_perks', []):
-            mid = row.get('member_id')
-            pid = row.get('perk_id')
-            if mid in valid_members and pid in valid_perks:
-                c.execute('''
-                    INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(member_id, perk_id) DO UPDATE SET
-                        last_claimed=excluded.last_claimed,
-                        next_reset_date=excluded.next_reset_date
-                ''', (
-                    mid, pid,
-                    row.get('last_claimed'),
-                    row.get('next_reset_date')
-                ))
-        conn.commit()
-        return ('OK', 200)
-    finally:
-        conn.close()
 
 def get_connection():
     conn = sqlite3.connect(DB, timeout=30)
