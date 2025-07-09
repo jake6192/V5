@@ -49,7 +49,9 @@ def ensure_column_exists():
         tables = {
             'members': 'last_updated TEXT',
             'tiers': 'last_updated TEXT',
-            'perks': 'last_updated TEXT'
+            'perks': 'last_updated TEXT',
+            'tier_perks': 'last_updated TEXT',
+            'member_perks': 'last_updated TEXT'
         }
         for table, column_def in tables.items():
             c.execute(f"PRAGMA table_info({table})")
