@@ -511,69 +511,70 @@ def reset_perk():
 def sync_pull():
     conn = get_connection()
     c = conn.cursor()
-    c.execute('SELECT * FROM members')
-    rows = [dict(row) for row in c.fetchall()]
+    data = {}
+    for table in ['members', 'tiers', 'perks', 'tier_perks', 'member_perks']:
+        c.execute(f'SELECT * FROM {table}')
+        data[table] = [dict(row) for row in c.fetchall()]
     conn.close()
-    return jsonify(rows)
+    return jsonify(data)
 
 @app.route('/sync/push', methods=['POST'])
 def sync_push():
-    data = request.get_json()
+    payload = request.get_json()
     conn = get_connection()
     c = conn.cursor()
-    seen_ids = {}
-    for member in data:
-        try:
-            required = ['member_id', 'name', 'location', 'tier_id', 'sign_up_date', 'date_of_birth', 'last_updated']
-            if not all(field in member for field in required):
-                continue  # Case 9: skip malformed row
-            # Case 13: dedup — only most recent per member_id wins
-            mid = member['member_id']
-            if mid in seen_ids:
-                if member['last_updated'] <= seen_ids[mid]['last_updated']:
-                    continue
-            seen_ids[mid] = member
-            # Case 8: validate timestamp format
-            try:
-                datetime.fromisoformat(member['last_updated'])
-            except:
-                continue  # Case 5: skip unparseable timestamp
-            # Case 10: type coercion
-            try:
-                member['tier_id'] = int(member['tier_id']) if member['tier_id'] else None
-            except:
-                continue
-            # Pull local comparison
-            c.execute('SELECT last_updated FROM members WHERE member_id = ?', (mid,))
-            existing = c.fetchone()
-            local_ts = existing['last_updated'] if existing and existing['last_updated'] else ''
-            remote_ts = member['last_updated']
-            # Case 3: equal timestamps → keep remote
-            if existing:
-                if not local_ts or remote_ts >= local_ts:
-                    c.execute('''
-                        UPDATE members
-                        SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
-                        WHERE member_id=?
-                    ''', (
-                        member['name'], member['location'], member['tier_id'],
-                        member['sign_up_date'], member['date_of_birth'], member['last_updated'], member['member_id']
-                    ))
-            else:
-                c.execute('''
-                    INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    member['member_id'], member['name'], member['location'], member['tier_id'],
-                    member['sign_up_date'], member['date_of_birth'], member['last_updated']
-                ))
-        except Exception as e:
-            print("Sync row failed:", e)
-            continue  # continue to next member
     try:
+        for row in payload.get('members', []):
+            try:
+                c.execute('SELECT last_updated FROM members WHERE member_id = ?', (row['member_id'],))
+                existing = c.fetchone()
+                local_ts = existing['last_updated'] if existing and existing['last_updated'] else ''
+                remote_ts = row.get('last_updated', '')
+                if not remote_ts or remote_ts < local_ts:
+                    continue
+                c.execute('SELECT COUNT(*) FROM members WHERE member_id = ?', (row['member_id'],))
+                exists = c.fetchone()[0] > 0
+                if exists:
+                    c.execute('''
+                        UPDATE members SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
+                        WHERE member_id=?
+                    ''', (row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts, row['member_id']))
+                else:
+                    c.execute('''
+                        INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (row['member_id'], row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts))
+            except Exception as e:
+                print('Member merge error:', e)
+        for table in ['tiers', 'perks']:
+            for row in payload.get(table, []):
+                try:
+                    c.execute(f'SELECT COUNT(*) FROM {table} WHERE id=?', (row['id'],))
+                    exists = c.fetchone()[0] > 0
+                    if exists:
+                        cols = ', '.join([f"{k}=?" for k in row if k != 'id'])
+                        vals = [row[k] for k in row if k != 'id'] + [row['id']]
+                        c.execute(f'UPDATE {table} SET {cols} WHERE id=?', vals)
+                    else:
+                        keys = ', '.join(row.keys())
+                        qmarks = ', '.join(['?'] * len(row))
+                        c.execute(f'INSERT INTO {table} ({keys}) VALUES ({qmarks})', tuple(row.values()))
+                except Exception as e:
+                    print(f'{table} merge error:', e)
+        for table in ['tier_perks', 'member_perks']:
+            for row in payload.get(table, []):
+                try:
+                    keys = list(row.keys())
+                    conditions = ' AND '.join([f"{k}=?" for k in keys])
+                    c.execute(f'SELECT COUNT(*) FROM {table} WHERE {conditions}', tuple(row[k] for k in keys))
+                    exists = c.fetchone()[0] > 0
+                    if not exists:
+                        c.execute(f'INSERT INTO {table} ({", ".join(keys)}) VALUES ({", ".join(["?"]*len(keys))})', tuple(row.values()))
+                except Exception as e:
+                    print(f'{table} merge error:', e)
         conn.commit()
     except Exception as e:
-        print("Commit failed during sync:", e)  # Case 12
+        print('SYNC_PUSH error:', e)
     finally:
         conn.close()
     return ('OK', 200)
@@ -587,7 +588,7 @@ def sync_with_peer():
             remote = r.json()
             res = requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
             if res.status_code != 200:
-                print("Push failed with status:", res.status_code)  # Case 12
+                print("Push failed with status:", res.status_code)
         except Exception as e:
             print('Sync failed:', e)
         time.sleep(60)
