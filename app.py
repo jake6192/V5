@@ -1,12 +1,14 @@
 # app.py
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, send_file, abort
 from datetime import datetime, timedelta
 from flask_cors import CORS
 import subprocess
+import threading
+import requests
 import sqlite3
+import time
 import os
-from flask import request, send_file, abort
 
 # Auto-init the database if it's the first run
 if not os.path.exists('tracking.db'):
@@ -229,6 +231,9 @@ def create_or_edit_member():
                 INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
+        c.execute('''
+            UPDATE members SET last_updated = CURRENT_TIMESTAMP WHERE id = ?
+        ''', (data['id'],))
         conn.commit()
         return ('OK', 200)
     finally:
@@ -403,11 +408,11 @@ def assign_perk_to_tier():
     finally:
         conn.close()
 
+# MEMBER-PERKS ROUTES
 @app.route('/api/tier_perks', methods=['DELETE'])
 def unassign_perk_from_tier():
     data = request.json
     conn = get_connection()
-# MEMBER-PERKS ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
@@ -500,5 +505,61 @@ def reset_perk():
     finally:
         conn.close()
 
+
+# VPN SYNC ROUTES
+@app.route('/sync/pull', methods=['GET'])
+def sync_pull():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute('SELECT * FROM members')
+    rows = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return jsonify(rows)
+
+@app.route('/sync/push', methods=['POST'])
+def sync_push():
+    data = request.get_json()
+    conn = get_connection()
+    c = conn.cursor()
+    for member in data:
+        c.execute('SELECT last_updated FROM members WHERE member_id = ?', (member['member_id'],))
+        existing = c.fetchone()
+        if existing:
+            local_ts = existing['last_updated']
+            remote_ts = member['last_updated']
+            if not local_ts or remote_ts > local_ts:
+                c.execute('''
+                    UPDATE members
+                    SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
+                    WHERE member_id=?
+                ''', (
+                    member['name'], member['location'], member['tier_id'],
+                    member['sign_up_date'], member['date_of_birth'], member['last_updated'], member['member_id']
+                ))
+        else:
+            c.execute('''
+                INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                member['member_id'], member['name'], member['location'], member['tier_id'],
+                member['sign_up_date'], member['date_of_birth'], member['last_updated']
+            ))
+    conn.commit()
+    conn.close()
+    return ('OK', 200)
+
+def sync_with_peer():
+    peer_ip = "10.243.4.245"  # ZeroTier IP of KL Laptop
+    #peer_ip = "10.243.252.7"  # ZeroTier IP of Jake's Laptop
+    while True:
+        try:
+            r = requests.get(f'http://{peer_ip}:5000/sync/pull', timeout=5)
+            remote = r.json()
+            requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
+        except Exception as e:
+            print('Sync failed:', e)
+        time.sleep(60)
+
 if __name__ == '__main__':
+    threading.Thread(target=sync_with_peer, daemon=True).start()
     app.run(debug=True)
