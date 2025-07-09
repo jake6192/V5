@@ -18,6 +18,7 @@ app = Flask(__name__)
 CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
+ENABLE_SYNC_LOGS = True  # Set False to suppress sync-related errors
 
 # Forward all logging to browser console, as python console is hidden from view.
 log_buffer = deque(maxlen=1000)
@@ -663,8 +664,9 @@ def sync_with_peer():
             if res.status_code != 200:
                 log(f"Push failed with status: {res.status_code}")
         except Exception as e:
-            log(f'Sync failed: {e}')
-            sys.excepthook(*sys.exc_info())
+            if ENABLE_SYNC_LOGS:
+                log(f'Sync failed: {e}')
+                sys.excepthook(*sys.exc_info())
         time.sleep(60)
 
 if __name__ == '__main__':
