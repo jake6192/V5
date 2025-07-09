@@ -5,12 +5,19 @@ from datetime import datetime, timedelta
 from flask_cors import CORS
 from collections import deque
 import subprocess
+import traceback
 import threading
 import requests
 import logging
 import sqlite3
 import time
+import sys
 import os
+
+app = Flask(__name__)
+CORS(app)
+DB = 'tracking.db'
+DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
 
 # Forward all logging to browser console, as python console is hidden from view.
 log_buffer = deque(maxlen=1000)
@@ -19,6 +26,15 @@ def log(message):
     print(message)
     with log_lock:
         log_buffer.append(message)
+def log_exception(exc_type, exc_value, exc_tb):
+    error_message = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
+    log('[EXCEPTION]\n' + error_message)
+# Hook global error handler
+sys.excepthook = log_exception
+@app.errorhandler(Exception)
+def handle_exception(e):
+    log('[FLASK ERROR] ' + str(e))
+    return 'Internal server error', 500
 
 # Auto-init the database if it's the first run
 if not os.path.exists('tracking.db'):
@@ -44,11 +60,6 @@ def ensure_column_exists():
         log('Schema patch error:', e)
     finally:
         conn.close()
-
-app = Flask(__name__)
-CORS(app)
-DB = 'tracking.db'
-DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
 
 @app.route('/logs')
 def get_logs():
@@ -600,7 +611,7 @@ def sync_push():
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                     ''', (row['member_id'], row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts))
             except Exception as e:
-                log('Member merge error:', e)
+                log(f'Member merge error: {e}')
         for table in ['tiers', 'perks']:
             for row in payload.get(table, []):
                 required = ['id', 'name', 'color', 'last_updated'] if table == 'tiers' else ['id', 'name', 'reset_period', 'last_updated']
@@ -618,7 +629,7 @@ def sync_push():
                         qmarks = ', '.join(['?'] * len(row))
                         c.execute(f'INSERT INTO {table} ({keys}) VALUES ({qmarks})', tuple(row.values()))
                 except Exception as e:
-                    log(f'{table} merge error:', e)
+                    log(f'{table} merge error: {e}')
         for table in ['tier_perks', 'member_perks']:
             for row in payload.get(table, []):
                 required = ['tier_id', 'perk_id'] if table == 'tier_perks' else ['member_id', 'perk_id', 'perk_claimed', 'last_claimed']
@@ -632,10 +643,10 @@ def sync_push():
                     if not exists:
                         c.execute(f'INSERT INTO {table} ({", ".join(keys)}) VALUES ({", ".join(["?"]*len(keys))})', tuple(row.values()))
                 except Exception as e:
-                    log(f'{table} merge error:', e)
+                    log(f'{table} merge error: {e}')
         conn.commit()
     except Exception as e:
-        log('SYNC_PUSH error:', e)
+        log(f'SYNC_PUSH error: {e}')
     finally:
         conn.close()
     log(f'[GET] 200 /sync/push')
@@ -650,9 +661,10 @@ def sync_with_peer():
             remote = r.json()
             res = requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
             if res.status_code != 200:
-                log("Push failed with status:", res.status_code)
+                log(f"Push failed with status: {res.status_code}")
         except Exception as e:
-            log('Sync failed:', e)
+            log(f'Sync failed: {e}')
+            sys.excepthook(*sys.exc_info())
         time.sleep(60)
 
 if __name__ == '__main__':
