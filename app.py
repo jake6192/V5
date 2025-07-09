@@ -521,31 +521,61 @@ def sync_push():
     data = request.get_json()
     conn = get_connection()
     c = conn.cursor()
+    seen_ids = {}
     for member in data:
-        c.execute('SELECT last_updated FROM members WHERE member_id = ?', (member['member_id'],))
-        existing = c.fetchone()
-        if existing:
-            local_ts = existing['last_updated']
+        try:
+            required = ['member_id', 'name', 'location', 'tier_id', 'sign_up_date', 'date_of_birth', 'last_updated']
+            if not all(field in member for field in required):
+                continue  # Case 9: skip malformed row
+            # Case 13: dedup — only most recent per member_id wins
+            mid = member['member_id']
+            if mid in seen_ids:
+                if member['last_updated'] <= seen_ids[mid]['last_updated']:
+                    continue
+            seen_ids[mid] = member
+            # Case 8: validate timestamp format
+            try:
+                datetime.fromisoformat(member['last_updated'])
+            except:
+                continue  # Case 5: skip unparseable timestamp
+            # Case 10: type coercion
+            try:
+                member['tier_id'] = int(member['tier_id']) if member['tier_id'] else None
+            except:
+                continue
+            # Pull local comparison
+            c.execute('SELECT last_updated FROM members WHERE member_id = ?', (mid,))
+            existing = c.fetchone()
+            local_ts = existing['last_updated'] if existing and existing['last_updated'] else ''
             remote_ts = member['last_updated']
-            if not local_ts or remote_ts > local_ts:
+            # Case 3: equal timestamps → keep remote
+            if existing:
+                if not local_ts or remote_ts >= local_ts:
+                    c.execute('''
+                        UPDATE members
+                        SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
+                        WHERE member_id=?
+                    ''', (
+                        member['name'], member['location'], member['tier_id'],
+                        member['sign_up_date'], member['date_of_birth'], member['last_updated'], member['member_id']
+                    ))
+            else:
                 c.execute('''
-                    UPDATE members
-                    SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
-                    WHERE member_id=?
+                    INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    member['name'], member['location'], member['tier_id'],
-                    member['sign_up_date'], member['date_of_birth'], member['last_updated'], member['member_id']
+                    member['member_id'], member['name'], member['location'], member['tier_id'],
+                    member['sign_up_date'], member['date_of_birth'], member['last_updated']
                 ))
-        else:
-            c.execute('''
-                INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                member['member_id'], member['name'], member['location'], member['tier_id'],
-                member['sign_up_date'], member['date_of_birth'], member['last_updated']
-            ))
-    conn.commit()
-    conn.close()
+        except Exception as e:
+            print("Sync row failed:", e)
+            continue  # continue to next member
+    try:
+        conn.commit()
+    except Exception as e:
+        print("Commit failed during sync:", e)  # Case 12
+    finally:
+        conn.close()
     return ('OK', 200)
 
 def sync_with_peer():
@@ -555,7 +585,9 @@ def sync_with_peer():
         try:
             r = requests.get(f'http://{peer_ip}:5000/sync/pull', timeout=5)
             remote = r.json()
-            requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
+            res = requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
+            if res.status_code != 200:
+                print("Push failed with status:", res.status_code)  # Case 12
         except Exception as e:
             print('Sync failed:', e)
         time.sleep(60)
