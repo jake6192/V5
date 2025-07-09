@@ -131,5 +131,13 @@
   </div>
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script>
+	let fetchLogs = () => {
+	  fetch('/logs').then(r => r.json()).then(logs => {
+	    console.clear();
+	    logs.forEach(line => console.log(line));
+	  }).catch(err => console.warn("Log fetch failed:", err));
+	};
+  </script>
 </body>
 </html>

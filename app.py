@@ -3,16 +3,26 @@
 from flask import Flask, request, jsonify, render_template, send_file, abort
 from datetime import datetime, timedelta
 from flask_cors import CORS
+from collections import deque
 import subprocess
 import threading
 import requests
+import logging
 import sqlite3
 import time
 import os
 
+# Forward all logging to browser console, as python console is hidden from view.
+log_buffer = deque(maxlen=1000)
+log_lock = threading.Lock()
+def log(message):
+    print(message)
+    with log_lock:
+        log_buffer.append(message)
+
 # Auto-init the database if it's the first run
 if not os.path.exists('tracking.db'):
-    print("tracking.db not found. Running init_db.py...")
+    log("tracking.db not found. Running init_db.py...")
     subprocess.run(['python', 'init_db.py'])
     
 def ensure_column_exists():
@@ -31,7 +41,7 @@ def ensure_column_exists():
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {column_def}")
         conn.commit()
     except Exception as e:
-        print('Schema patch error:', e)
+        log('Schema patch error:', e)
     finally:
         conn.close()
 
@@ -39,6 +49,11 @@ app = Flask(__name__)
 CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
+
+@app.route('/logs')
+def get_logs():
+    with log_lock:
+        return jsonify(list(log_buffer)[-100:])
 
 @app.route('/download-db')
 def download_db():
@@ -194,18 +209,8 @@ def get_members():
             ORDER BY m.member_id
         ''')
         members = [dict(row) for row in c.fetchall()]
+        log('[GET] 200 /api/members')
         return jsonify(members)
-    finally:
-        conn.close()
-
-@app.route('/api/members/<int:member_id>', methods=['GET'])
-def get_member(member_id):
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        c.execute('SELECT * FROM members WHERE member_id = ?', (member_id,))
-        row = c.fetchone()
-        return jsonify(dict(row)) if row else ('Not found', 404)
     finally:
         conn.close()
 
@@ -255,6 +260,7 @@ def create_or_edit_member():
             UPDATE members SET last_updated = CURRENT_TIMESTAMP WHERE id = ?
         ''', (data['id'],))
         conn.commit()
+        log(f'[POST] 200 /api/members')
         return ('OK', 200)
     finally:
         conn.close()
@@ -262,16 +268,17 @@ def create_or_edit_member():
 @app.route('/api/members/<int:member_id>', methods=['DELETE'])
 def delete_member(member_id):
     conn = get_connection()
-# TIER ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM member_perks WHERE member_id = ?', (member_id,))
         c.execute('DELETE FROM members WHERE member_id = ?', (member_id,))
         conn.commit()
+        log(f'[DELETE] 200 /api/members/{member_id}')
         return ('OK', 200)
     finally:
         conn.close()
 
+# TIER ROUTES
 @app.route('/api/tiers', methods=['GET'])
 def get_tiers():
     conn = get_connection()
@@ -279,6 +286,7 @@ def get_tiers():
         c = conn.cursor()
         c.execute('SELECT * FROM tiers')
         tiers = [dict(row) for row in c.fetchall()]
+        log(f'[GET] 200 /api/tiers')
         return jsonify(tiers)
     finally:
         conn.close()
@@ -290,7 +298,12 @@ def get_tier(tier_id):
         c = conn.cursor()
         c.execute('SELECT * FROM tiers WHERE id = ?', (tier_id,))
         row = c.fetchone()
-        return jsonify(dict(row)) if row else ('Not found', 404)
+        if row:
+            log(f'[GET] 200 /api/tiers/{tier_id}')
+            return jsonify(dict(row))
+        else:
+            log(f'[GET] 404 /api/tiers/{tier_id}')
+            return ('Not found', 404)
     finally:
         conn.close()
 
@@ -305,6 +318,7 @@ def create_or_edit_tier():
         else:
             c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)', (data['name'], data['color']))
         conn.commit()
+        log(f'[POST] 200 /api/tiers')
         return ('OK', 200)
     finally:
         conn.close()
@@ -312,16 +326,17 @@ def create_or_edit_tier():
 @app.route('/api/tiers/<int:tier_id>', methods=['DELETE'])
 def delete_tier(tier_id):
     conn = get_connection()
-# PERKS ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM tier_perks WHERE tier_id = ?', (tier_id,))
         c.execute('DELETE FROM tiers WHERE id = ?', (tier_id,))
         conn.commit()
+        log(f'[DELETE] 200 /api/tiers/{tier_id}')
         return ('OK', 200)
     finally:
         conn.close()
 
+# PERKS ROUTES
 @app.route('/api/perks', methods=['GET'])
 def get_perks():
     conn = get_connection()
@@ -339,6 +354,7 @@ def get_perks():
               END
         """)
         perks = [dict(row) for row in c.fetchall()]
+        log(f'[GET] 200 /api/perks')
         return jsonify(perks)
     finally:
         conn.close()
@@ -350,7 +366,12 @@ def get_perk(perk_id):
         c = conn.cursor()
         c.execute('SELECT * FROM perks WHERE id = ?', (perk_id,))
         row = c.fetchone()
-        return jsonify(dict(row)) if row else ('Not found', 404)
+        if row:
+            log(f'[GET] 200 /api/perks/{perk_id}')
+            return jsonify(dict(row))
+        else:
+            log(f'[GET] 404 /api/perks/{perk_id}')
+            return ('Not found', 404)
     finally:
         conn.close()
 
@@ -367,20 +388,22 @@ def create_or_edit_perk():
             c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
                       (data['name'], data['reset_period']))
         conn.commit()
+        log(f'[GET] 200 /api/perks')
         return ('OK', 200)
     finally:
         conn.close()
 
+# TIER-PERKS ROUTES
 @app.route('/api/perks/<int:perk_id>', methods=['DELETE'])
 def delete_perk(perk_id):
     conn = get_connection()
-# TIER-PERKS ROUTES
     try:
         c = conn.cursor()
         c.execute('DELETE FROM tier_perks WHERE perk_id = ?', (perk_id,))
         c.execute('DELETE FROM member_perks WHERE perk_id = ?', (perk_id,))
         c.execute('DELETE FROM perks WHERE id = ?', (perk_id,))
         conn.commit()
+        log(f'[DELETE] 200 /api/perks/{perk_id}')
         return ('OK', 200)
     finally:
         conn.close()
@@ -405,6 +428,7 @@ def get_perks_for_tier(tier_id):
               END
         ''', (tier_id,))
         perks = [dict(row) for row in c.fetchall()]
+        log(f'[GET] 200 /api/tier_perks/{tier_id}')
         return jsonify(perks)
     finally:
         conn.close()
@@ -424,11 +448,12 @@ def assign_perk_to_tier():
             # No need to insert member_perks row, will be created on claim
             pass
         conn.commit()
+        log(f'[POST] 200 /api/tier_perks')
         return ('OK', 200)
     finally:
         conn.close()
 
-# MEMBER-PERKS ROUTES
+# TIER-PERKS ROUTE
 @app.route('/api/tier_perks', methods=['DELETE'])
 def unassign_perk_from_tier():
     data = request.json
@@ -438,10 +463,12 @@ def unassign_perk_from_tier():
         c.execute('DELETE FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
                   (data['tier_id'], data['perk_id']))
         conn.commit()
+        log(f'[DELETE] 200 /api/tier_perks')
         return ('OK', 200)
     finally:
         conn.close()
 
+# MEMBER-PERKS ROUTES
 @app.route('/api/member_perks/<int:member_id>', methods=['GET'])
 def get_member_perks(member_id):
     check_and_reset_member_perks(member_id)
@@ -451,6 +478,7 @@ def get_member_perks(member_id):
         c.execute('SELECT tier_id FROM members WHERE member_id = ?', (member_id,))
         member = c.fetchone()
         if not member:
+            log(f'[GET] 404 /api/member_perks/{member_id}  ~~  member not found')
             return jsonify([])
 
         c.execute('''
@@ -473,6 +501,7 @@ def get_member_perks(member_id):
         ''', (member_id, member['tier_id']))
 
         perks = [dict(row) for row in c.fetchall()]
+        log(f'[GET] 200 /api/member_perks/{member_id}')
         return jsonify(perks)
     finally:
         conn.commit()
@@ -506,6 +535,7 @@ def claim_perk():
                 VALUES (?, ?, ?, ?)
             ''', (data['member_id'], data['perk_id'], now, next_reset))
         conn.commit()
+        log(f'[POST] 200 /api/member_perks/claim')
         return ('OK', 200)
     finally:
         conn.close()
@@ -521,6 +551,7 @@ def reset_perk():
             WHERE member_id = ? AND perk_id = ?
         ''', (data['member_id'], data['perk_id']))
         conn.commit()
+        log(f'[POST] 200 /api/member_perks/reset')
         return ('OK', 200)
     finally:
         conn.close()
@@ -536,6 +567,7 @@ def sync_pull():
         c.execute(f'SELECT * FROM {table}')
         data[table] = [dict(row) for row in c.fetchall()]
     conn.close()
+    log(f'[GET] 200 /sync/pull')
     return jsonify(data)
 
 @app.route('/sync/push', methods=['POST'])
@@ -568,7 +600,7 @@ def sync_push():
                         VALUES (?, ?, ?, ?, ?, ?, ?)
                     ''', (row['member_id'], row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts))
             except Exception as e:
-                print('Member merge error:', e)
+                log('Member merge error:', e)
         for table in ['tiers', 'perks']:
             for row in payload.get(table, []):
                 required = ['id', 'name', 'color', 'last_updated'] if table == 'tiers' else ['id', 'name', 'reset_period', 'last_updated']
@@ -586,7 +618,7 @@ def sync_push():
                         qmarks = ', '.join(['?'] * len(row))
                         c.execute(f'INSERT INTO {table} ({keys}) VALUES ({qmarks})', tuple(row.values()))
                 except Exception as e:
-                    print(f'{table} merge error:', e)
+                    log(f'{table} merge error:', e)
         for table in ['tier_perks', 'member_perks']:
             for row in payload.get(table, []):
                 required = ['tier_id', 'perk_id'] if table == 'tier_perks' else ['member_id', 'perk_id', 'perk_claimed', 'last_claimed']
@@ -600,12 +632,13 @@ def sync_push():
                     if not exists:
                         c.execute(f'INSERT INTO {table} ({", ".join(keys)}) VALUES ({", ".join(["?"]*len(keys))})', tuple(row.values()))
                 except Exception as e:
-                    print(f'{table} merge error:', e)
+                    log(f'{table} merge error:', e)
         conn.commit()
     except Exception as e:
-        print('SYNC_PUSH error:', e)
+        log('SYNC_PUSH error:', e)
     finally:
         conn.close()
+    log(f'[GET] 200 /sync/push')
     return ('OK', 200)
 
 def sync_with_peer():
@@ -617,9 +650,9 @@ def sync_with_peer():
             remote = r.json()
             res = requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
             if res.status_code != 200:
-                print("Push failed with status:", res.status_code)
+                log("Push failed with status:", res.status_code)
         except Exception as e:
-            print('Sync failed:', e)
+            log('Sync failed:', e)
         time.sleep(60)
 
 if __name__ == '__main__':
