@@ -41,9 +41,16 @@ def sync_pull():
     try:
         c = conn.cursor()
         data = {}
-        for table in ['members', 'tiers', 'perks', 'tier_perks', 'member_perks']:
-            c.execute(f'SELECT * FROM {table}')
-            data[table] = [dict(row) for row in c.fetchall()]
+        c.execute('SELECT * FROM members')
+        data['members'] = [dict(row) for row in c.fetchall()]
+        c.execute('SELECT * FROM tiers')
+        data['tiers'] = [dict(row) for row in c.fetchall()]
+        c.execute('SELECT * FROM perks')
+        data['perks'] = [dict(row) for row in c.fetchall()]
+        c.execute('SELECT * FROM tier_perks')
+        data['tier_perks'] = [dict(row) for row in c.fetchall()]
+        c.execute('SELECT * FROM member_perks')
+        data['member_perks'] = [dict(row) for row in c.fetchall()]
         return jsonify(data)
     finally:
         conn.close()
@@ -54,98 +61,95 @@ def sync_push():
     conn = get_connection()
     try:
         c = conn.cursor()
-        def get_latest(table, key):
-            c.execute(f'SELECT {key}, last_updated FROM {table}')
-            return {row[key]: row['last_updated'] for row in c.fetchall()}
-        members_existing = get_latest('members', 'member_id')
-        tiers_existing = get_latest('tiers', 'id')
-        perks_existing = get_latest('perks', 'id')
-        member_perks_existing = {
-            (row['member_id'], row['perk_id']): row['last_updated']
-            for row in c.execute('SELECT member_id, perk_id, last_updated FROM member_perks')
-        }
-        tier_perks_existing = {
-            (row['tier_id'], row['perk_id'])
-            for row in c.execute('SELECT tier_id, perk_id FROM tier_perks')
-        }
+        # Cache foreign key IDs to validate dependencies
+        c.execute('SELECT id FROM tiers')
+        valid_tiers = {row['id'] for row in c.fetchall()}
+        c.execute('SELECT id FROM perks')
+        valid_perks = {row['id'] for row in c.fetchall()}
+        c.execute('SELECT member_id FROM members')
+        valid_members = {row['member_id'] for row in c.fetchall()}
+        # --- Members
         for row in data.get('members', []):
-            mid = row['member_id']
-            if mid not in members_existing or row['last_updated'] > members_existing[mid]:
-                c.execute('''
-                    INSERT INTO members (id, member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(member_id) DO UPDATE SET
-                        name=excluded.name,
-                        location=excluded.location,
-                        tier_id=excluded.tier_id,
-                        sign_up_date=excluded.sign_up_date,
-                        date_of_birth=excluded.date_of_birth,
-                        last_updated=excluded.last_updated
-                ''', (
-                    row.get('id'),
-                    row.get('member_id'),
-                    row.get('name'),
-                    row.get('location'),
-                    row.get('tier_id'),
-                    row.get('sign_up_date'),
-                    row.get('date_of_birth'),
-                    row.get('last_updated')
-                ))
+            c.execute('''
+                INSERT INTO members (id, member_id, name, location, tier_id, sign_up_date, date_of_birth)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(member_id) DO UPDATE SET
+                    name=excluded.name,
+                    location=excluded.location,
+                    tier_id=excluded.tier_id,
+                    sign_up_date=excluded.sign_up_date,
+                    date_of_birth=excluded.date_of_birth
+            ''', (
+                row.get('id'),
+                row.get('member_id'),
+                row.get('name'),
+                row.get('location'),
+                row.get('tier_id'),
+                row.get('sign_up_date'),
+                row.get('date_of_birth')
+            ))
+        # Update tier/member ID sets after inserts
+        c.execute('SELECT id FROM tiers')
+        valid_tiers = {row['id'] for row in c.fetchall()}
+        c.execute('SELECT member_id FROM members')
+        valid_members = {row['member_id'] for row in c.fetchall()}
+        # --- Tiers
         for row in data.get('tiers', []):
-            tid = row['id']
-            if tid not in tiers_existing or row['last_updated'] > tiers_existing[tid]:
-                c.execute('''
-                    INSERT INTO tiers (id, name, color, last_updated)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        name=excluded.name,
-                        color=excluded.color,
-                        last_updated=excluded.last_updated
-                ''', (
-                    row.get('id'),
-                    row.get('name'),
-                    row.get('color'),
-                    row.get('last_updated')
-                ))
+            c.execute('''
+                INSERT INTO tiers (id, name, color)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name=excluded.name,
+                    color=excluded.color
+            ''', (
+                row.get('id'),
+                row.get('name'),
+                row.get('color')
+            ))
+        # --- Perks
         for row in data.get('perks', []):
-            pid = row['id']
-            if pid not in perks_existing or row['last_updated'] > perks_existing[pid]:
-                c.execute('''
-                    INSERT INTO perks (id, name, reset_period, last_updated)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        name=excluded.name,
-                        reset_period=excluded.reset_period,
-                        last_updated=excluded.last_updated
-                ''', (
-                    row.get('id'),
-                    row.get('name'),
-                    row.get('reset_period'),
-                    row.get('last_updated')
-                ))
+            c.execute('''
+                INSERT INTO perks (id, name, reset_period)
+                VALUES (?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name=excluded.name,
+                    reset_period=excluded.reset_period
+            ''', (
+                row.get('id'),
+                row.get('name'),
+                row.get('reset_period')
+            ))
+        # Refresh foreign keys again after all tier/perk/member inserts
+        c.execute('SELECT id FROM perks')
+        valid_perks = {row['id'] for row in c.fetchall()}
+        c.execute('SELECT id FROM tiers')
+        valid_tiers = {row['id'] for row in c.fetchall()}
+        c.execute('SELECT member_id FROM members')
+        valid_members = {row['member_id'] for row in c.fetchall()}
+        # --- Tier_perks
         for row in data.get('tier_perks', []):
-            key = (row['tier_id'], row['perk_id'])
-            if key not in tier_perks_existing:
+            tier_id = row.get('tier_id')
+            perk_id = row.get('perk_id')
+            if tier_id in valid_tiers and perk_id in valid_perks:
                 c.execute('''
                     INSERT OR IGNORE INTO tier_perks (tier_id, perk_id)
                     VALUES (?, ?)
-                ''', (row['tier_id'], row['perk_id']))
+                ''', (tier_id, perk_id))
+        # --- Member_perks
         for row in data.get('member_perks', []):
-            key = (row['member_id'], row['perk_id'])
-            if key not in member_perks_existing or row['last_updated'] > member_perks_existing.get(key, ""):
+            mid = row.get('member_id')
+            pid = row.get('perk_id')
+            if mid in valid_members and pid in valid_perks:
                 c.execute('''
-                    INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date, last_updated)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
+                    VALUES (?, ?, ?, ?)
                     ON CONFLICT(member_id, perk_id) DO UPDATE SET
                         last_claimed=excluded.last_claimed,
-                        next_reset_date=excluded.next_reset_date,
-                        last_updated=excluded.last_updated
+                        next_reset_date=excluded.next_reset_date
                 ''', (
-                    row.get('member_id'),
-                    row.get('perk_id'),
+                    mid, pid,
                     row.get('last_claimed'),
-                    row.get('next_reset_date'),
-                    row.get('last_updated')
+                    row.get('next_reset_date')
                 ))
         conn.commit()
         return ('OK', 200)
@@ -621,16 +625,15 @@ def reset_perk():
         
 def sync_loop(peer_ip: str):
     sync_interval = 60  # seconds
+
     while True:
         try:
+            # Step 1: Try to pull from peer
             r = requests.get(f'http://{peer_ip}:5000/sync/pull', timeout=10)
             if r.status_code == 200:
                 remote_data = r.json()
-                now = datetime.utcnow().isoformat()
-                for table in ['members', 'tiers', 'perks', 'member_perks']:
-                    for row in remote_data.get(table, []):
-                        if 'last_updated' not in row or not row['last_updated']:
-                            row['last_updated'] = now
+
+                # Step 2: Push that data into local instance
                 push = requests.post('http://localhost:5000/sync/push', json=remote_data, timeout=10)
                 if push.status_code == 200:
                     print(f"[{time.strftime('%H:%M:%S')}] Sync success with {peer_ip}")
@@ -640,11 +643,12 @@ def sync_loop(peer_ip: str):
                 print(f"[{time.strftime('%H:%M:%S')}] Sync pull failed: {r.status_code}")
         except Exception as e:
             print(f"[{time.strftime('%H:%M:%S')}] Sync error: {e}")
+
         time.sleep(sync_interval)
 
 # Example usage:
-peer_ip = "10.243.4.245"  # ZeroTier IP of the peer system
+peer_ip = "10.243.252.7"  # ZeroTier IP of the peer system
 threading.Thread(target=sync_loop, args=(peer_ip,), daemon=True).start()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True)
