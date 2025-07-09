@@ -423,5 +423,4 @@ $(document).ready(function () {
 
 	// Initial load
 	loadMembers();
-  setInterval(loadMembers, 65000);
 });
