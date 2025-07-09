@@ -14,6 +14,26 @@ import os
 if not os.path.exists('tracking.db'):
     print("tracking.db not found. Running init_db.py...")
     subprocess.run(['python', 'init_db.py'])
+    
+def ensure_column_exists():
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        tables = {
+            'members': 'last_updated TEXT',
+            'tiers': 'last_updated TEXT',
+            'perks': 'last_updated TEXT'
+        }
+        for table, column_def in tables.items():
+            c.execute(f"PRAGMA table_info({table})")
+            columns = [row['name'] for row in c.fetchall()]
+            if 'last_updated' not in columns:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {column_def}")
+        conn.commit()
+    except Exception as e:
+        print('Schema patch error:', e)
+    finally:
+        conn.close()
 
 app = Flask(__name__)
 CORS(app)
@@ -525,6 +545,9 @@ def sync_push():
     c = conn.cursor()
     try:
         for row in payload.get('members', []):
+            required = ['member_id', 'name', 'location', 'tier_id', 'sign_up_date', 'date_of_birth', 'last_updated']
+            if not all(field in row for field in required):
+                continue
             try:
                 c.execute('SELECT last_updated FROM members WHERE member_id = ?', (row['member_id'],))
                 existing = c.fetchone()
@@ -548,6 +571,9 @@ def sync_push():
                 print('Member merge error:', e)
         for table in ['tiers', 'perks']:
             for row in payload.get(table, []):
+                required = ['id', 'name', 'color', 'last_updated'] if table == 'tiers' else ['id', 'name', 'reset_period', 'last_updated']
+                if not all(field in row for field in required):
+                    continue
                 try:
                     c.execute(f'SELECT COUNT(*) FROM {table} WHERE id=?', (row['id'],))
                     exists = c.fetchone()[0] > 0
@@ -563,6 +589,9 @@ def sync_push():
                     print(f'{table} merge error:', e)
         for table in ['tier_perks', 'member_perks']:
             for row in payload.get(table, []):
+                required = ['tier_id', 'perk_id'] if table == 'tier_perks' else ['member_id', 'perk_id', 'perk_claimed', 'last_claimed']
+                if not all(field in row for field in required):
+                    continue
                 try:
                     keys = list(row.keys())
                     conditions = ' AND '.join([f"{k}=?" for k in keys])
@@ -594,5 +623,6 @@ def sync_with_peer():
         time.sleep(60)
 
 if __name__ == '__main__':
+    ensure_column_exists()
     threading.Thread(target=sync_with_peer, daemon=True).start()
     app.run(debug=True)
