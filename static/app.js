@@ -420,6 +420,17 @@ $(document).ready(function () {
 			if(callback) callback(tiers);
 		});
 	}
+  
+  // ========== AUTO-SYNC UI POLLING ==========
+  // Poll every 60s for backend changes, refreshes only if modals are closed (so we don't interrupt edits)
+  setInterval(function() {
+    // Don't refresh while editing
+    if ($('.modal:visible').length === 0) {
+      loadMembers();
+      loadTiers();
+    }
+  }, 60000); // every 60s, change to 30000 for 30s, etc
+
 
 	// Initial load
 	loadMembers();
