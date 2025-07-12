@@ -132,12 +132,20 @@
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
   <script>
-	let fetchLogs = () => {
-	  fetch('/logs').then(r => r.json()).then(logs => {
-	    console.clear();
-	    logs.forEach(line => console.log(line));
-	  }).catch(err => console.warn("Log fetch failed:", err));
-	};
+    let fetchLogs = () => {
+      fetch('/logs').then(r => r.json()).then(logs => {
+        console.clear();
+        logs.forEach(line => console.log(line));
+      }).catch(err => console.warn("Log fetch failed:", err));
+    };
+    let clearLogs = () => {
+      fetch('/logs/clear', { method: 'POST' })
+        .then(r => {
+          if (r.ok) console.log("[Logs cleared]");
+          else console.warn("Failed to clear logs");
+        })
+        .catch(err => console.warn("Clear log error:", err));
+    };
   </script>
 </body>
 </html>
