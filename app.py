@@ -271,7 +271,10 @@ def create_or_edit_member():
                 ''', (mid,))
                 claimed_perks = c.fetchall()
                 for perk in claimed_perks:
-                    next_reset = calculate_next_reset(perk['reset_period'], {"sign_up_date": member["sign_up_date"], "date_of_birth": member["date_of_birth"]})
+                    next_reset = calculate_next_reset(perk['reset_period'], {
+                        "sign_up_date": member["sign_up_date"],
+                        "date_of_birth": member["date_of_birth"]
+                    })
                     c.execute('UPDATE member_perks SET next_reset_date=? WHERE member_id=? AND perk_id=?',
                               (next_reset, mid, perk['perk_id']))
         else:
@@ -333,18 +336,21 @@ def get_tier(tier_id):
 @app.route('/api/tiers', methods=['POST'])
 def create_or_edit_tier():
     data = request.json
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        if 'id' in data and data['id']:
-            c.execute('UPDATE tiers SET name=?, color=? WHERE id=?', (data['name'], data['color'], data['id']))
-        else:
-            c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)', (data['name'], data['color']))
-        conn.commit()
-        log(f'[POST] 200 /api/tiers')
-        return ('OK', 200)
-    finally:
-        conn.close()
+    with db_lock:
+        conn = get_connection()
+        try:
+            c = conn.cursor()
+            if 'id' in data and data['id']:
+                c.execute('UPDATE tiers SET name=?, color=?, last_updated=CURRENT_TIMESTAMP WHERE id=?',
+                          (data['name'], data['color'], data['id']))
+            else:
+                c.execute('INSERT INTO tiers (name, color, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                          (data['name'], data['color']))
+            conn.commit()
+            log(f'[POST] 200 /api/tiers')
+            return ('OK', 200)
+        finally:
+            conn.close()
 
 @app.route('/api/tiers/<int:tier_id>', methods=['DELETE'])
 def delete_tier(tier_id):
@@ -401,20 +407,21 @@ def get_perk(perk_id):
 @app.route('/api/perks', methods=['POST'])
 def create_or_edit_perk():
     data = request.json
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        if 'id' in data and data['id']:
-            c.execute('UPDATE perks SET name=?, reset_period=? WHERE id=?',
-                      (data['name'], data['reset_period'], data['id']))
-        else:
-            c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
-                      (data['name'], data['reset_period']))
-        conn.commit()
-        log(f'[GET] 200 /api/perks')
-        return ('OK', 200)
-    finally:
-        conn.close()
+    with db_lock:
+        conn = get_connection()
+        try:
+            c = conn.cursor()
+            if 'id' in data and data['id']:
+                c.execute('UPDATE perks SET name=?, reset_period=?, last_updated=CURRENT_TIMESTAMP WHERE id=?',
+                          (data['name'], data['reset_period'], data['id']))
+            else:
+                c.execute('INSERT INTO perks (name, reset_period, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                          (data['name'], data['reset_period']))
+            conn.commit()
+            log(f'[POST] 200 /api/perks')
+            return ('OK', 200)
+        finally:
+            conn.close()
 
 # TIER-PERKS ROUTES
 @app.route('/api/perks/<int:perk_id>', methods=['DELETE'])
@@ -459,22 +466,23 @@ def get_perks_for_tier(tier_id):
 @app.route('/api/tier_perks', methods=['POST'])
 def assign_perk_to_tier():
     data = request.json
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        c.execute('INSERT INTO tier_perks (tier_id, perk_id) VALUES (?, ?)',
-                  (data['tier_id'], data['perk_id']))
+    with db_lock:
+        conn = get_connection()
+        try:
+            c = conn.cursor()
+            c.execute('INSERT INTO tier_perks (tier_id, perk_id, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                      (data['tier_id'], data['perk_id']))
 
-        c.execute('SELECT member_id FROM members WHERE tier_id = ?', (data['tier_id'],))
-        members = c.fetchall()
-        for m in members:
-            # No need to insert member_perks row, will be created on claim
-            pass
-        conn.commit()
-        log(f'[POST] 200 /api/tier_perks')
-        return ('OK', 200)
-    finally:
-        conn.close()
+            c.execute('SELECT member_id FROM members WHERE tier_id = ?', (data['tier_id'],))
+            members = c.fetchall()
+            for m in members:
+                # No need to insert member_perks row, will be created on claim
+                pass
+            conn.commit()
+            log(f'[POST] 200 /api/tier_perks')
+            return ('OK', 200)
+        finally:
+            conn.close()
 
 # TIER-PERKS ROUTE
 @app.route('/api/tier_perks', methods=['DELETE'])
@@ -535,33 +543,34 @@ def claim_perk():
     data = request.json
     now_dt = datetime.now()
     now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
-    conn = get_connection()
-    try:
-        c = conn.cursor()
-        c.execute('SELECT reset_period FROM perks WHERE id = ?', (data['perk_id'],))
-        perk = c.fetchone()
+    with db_lock:
+        conn = get_connection()
+        try:
+            c = conn.cursor()
+            c.execute('SELECT reset_period FROM perks WHERE id = ?', (data['perk_id'],))
+            perk = c.fetchone()
 
-        c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (data['member_id'],))
-        member = c.fetchone()
+            c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (data['member_id'],))
+            member = c.fetchone()
 
-        reset_period = perk["reset_period"] if perk else None
-        member_data = {
-            "sign_up_date": member["sign_up_date"],
-            "date_of_birth": member["date_of_birth"]
-        } if member else {}
+            reset_period = perk["reset_period"] if perk else None
+            member_data = {
+                "sign_up_date": member["sign_up_date"],
+                "date_of_birth": member["date_of_birth"]
+            } if member else {}
 
-        next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
+            next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
 
-        # INSERT new perk claim for member
-        c.execute('''
-                INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
+            c.execute('''
+                INSERT OR REPLACE INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
                 VALUES (?, ?, ?, ?)
             ''', (data['member_id'], data['perk_id'], now, next_reset))
-        conn.commit()
-        log(f'[POST] 200 /api/member_perks/claim')
-        return ('OK', 200)
-    finally:
-        conn.close()
+
+            conn.commit()
+            log(f'[POST] 200 /api/member_perks/claim')
+            return ('OK', 200)
+        finally:
+            conn.close()
 
 @app.route('/api/member_perks/reset', methods=['POST'])
 def reset_perk():
