@@ -92,6 +92,8 @@ def download_db():
 
 def get_connection():
     conn = sqlite3.connect(DB, timeout=30)
+    conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
+    conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
     conn.row_factory = sqlite3.Row
     return conn
 

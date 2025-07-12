@@ -45,6 +45,8 @@ def main():
     # Connect
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
+        conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
     except sqlite3.Error as e:

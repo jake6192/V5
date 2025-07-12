@@ -2,6 +2,8 @@
 
 import sqlite3
 conn = sqlite3.connect('tracking.db')
+conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
+conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
 c = conn.cursor()
 
 # Drop existing tables for clean start (optional)
