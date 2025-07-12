@@ -598,73 +598,114 @@ def sync_pull():
 def sync_push():
     with db_lock:
         payload = request.get_json()
-        conn = get_connection()
-        c = conn.cursor()
+        conn = get_db()
         try:
-            for row in payload.get('members', []):
-                required = ['member_id', 'name', 'location', 'tier_id', 'sign_up_date', 'date_of_birth', 'last_updated']
-                if not all(field in row for field in required):
-                    continue
-                try:
-                    c.execute('SELECT last_updated FROM members WHERE member_id = ?', (row['member_id'],))
-                    existing = c.fetchone()
-                    local_ts = existing['last_updated'] if existing and existing['last_updated'] else ''
-                    remote_ts = row.get('last_updated', '')
-                    if not remote_ts or remote_ts < local_ts:
-                        continue
-                    c.execute('SELECT COUNT(*) FROM members WHERE member_id = ?', (row['member_id'],))
-                    exists = c.fetchone()[0] > 0
-                    if exists:
-                        c.execute('''
-                            UPDATE members SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
-                            WHERE member_id=?
-                        ''', (row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts, row['member_id']))
-                    else:
-                        c.execute('''
-                            INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (row['member_id'], row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts))
-                except Exception as e:
-                    log(f'Member merge error: {e}')
-            for table in ['tiers', 'perks']:
-                for row in payload.get(table, []):
-                    required = ['id', 'name', 'color', 'last_updated'] if table == 'tiers' else ['id', 'name', 'reset_period', 'last_updated']
-                    if not all(field in row for field in required):
-                        continue
-                    try:
-                        c.execute(f'SELECT COUNT(*) FROM {table} WHERE id=?', (row['id'],))
-                        exists = c.fetchone()[0] > 0
-                        if exists:
-                            cols = ', '.join([f"{k}=?" for k in row if k != 'id'])
-                            vals = [row[k] for k in row if k != 'id'] + [row['id']]
-                            c.execute(f'UPDATE {table} SET {cols} WHERE id=?', vals)
-                        else:
-                            keys = ', '.join(row.keys())
-                            qmarks = ', '.join(['?'] * len(row))
-                            c.execute(f'INSERT INTO {table} ({keys}) VALUES ({qmarks})', tuple(row.values()))
-                    except Exception as e:
-                        log(f'{table} merge error: {e}')
-            for table in ['tier_perks', 'member_perks']:
-                for row in payload.get(table, []):
-                    required = ['tier_id', 'perk_id'] if table == 'tier_perks' else ['member_id', 'perk_id', 'perk_claimed', 'last_claimed']
-                    if not all(field in row for field in required):
-                        continue
-                    try:
-                        keys = list(row.keys())
-                        conditions = ' AND '.join([f"{k}=?" for k in keys])
-                        c.execute(f'SELECT COUNT(*) FROM {table} WHERE {conditions}', tuple(row[k] for k in keys))
-                        exists = c.fetchone()[0] > 0
-                        if not exists:
-                            c.execute(f'INSERT INTO {table} ({", ".join(keys)}) VALUES ({", ".join(["?"]*len(keys))})', tuple(row.values()))
-                    except Exception as e:
-                        log(f'{table} merge error: {e}')
+            if payload is None:
+                return jsonify({'status': 'error', 'msg': 'No JSON received'}), 400
+
+            # MEMBERS
+            for row in payload.get("members", []):
+                cur = conn.execute('SELECT updated FROM members WHERE id = ?', (row["id"],))
+                existing = cur.fetchone()
+                if not existing:
+                    conn.execute('''
+                        INSERT INTO members (id, name, tier_id, sign_up_date, date_of_birth, updated)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (row["id"], row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["updated"]))
+                else:
+                    if row["updated"] > existing["updated"]:
+                        conn.execute('''
+                            UPDATE members SET name = ?, tier_id = ?, sign_up_date = ?, date_of_birth = ?, updated = ?
+                            WHERE id = ?
+                        ''', (row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["updated"], row["id"]))
+
+            # TIERS
+            for row in payload.get("tiers", []):
+                cur = conn.execute('SELECT updated FROM tiers WHERE id = ?', (row["id"],))
+                existing = cur.fetchone()
+                if not existing:
+                    conn.execute('''
+                        INSERT INTO tiers (id, name, color, updated)
+                        VALUES (?, ?, ?, ?)
+                    ''', (row["id"], row["name"], row["color"], row["updated"]))
+                else:
+                    if row["updated"] > existing["updated"]:
+                        conn.execute('''
+                            UPDATE tiers SET name = ?, color = ?, updated = ?
+                            WHERE id = ?
+                        ''', (row["name"], row["color"], row["updated"], row["id"]))
+
+            # PERKS
+            for row in payload.get("perks", []):
+                cur = conn.execute('SELECT updated FROM perks WHERE id = ?', (row["id"],))
+                existing = cur.fetchone()
+                if not existing:
+                    conn.execute('''
+                        INSERT INTO perks (id, name, description, reset_interval, updated)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (row["id"], row["name"], row["description"], row["reset_interval"], row["updated"]))
+                else:
+                    if row["updated"] > existing["updated"]:
+                        conn.execute('''
+                            UPDATE perks SET name = ?, description = ?, reset_interval = ?, updated = ?
+                            WHERE id = ?
+                        ''', (row["name"], row["description"], row["reset_interval"], row["updated"], row["id"]))
+
+            # TIER_PERKS (composite PK)
+            for row in payload.get("tier_perks", []):
+                cur = conn.execute(
+                    'SELECT updated FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
+                    (row["tier_id"], row["perk_id"])
+                )
+                existing = cur.fetchone()
+                if not existing:
+                    conn.execute('''
+                        INSERT INTO tier_perks (tier_id, perk_id, created, updated)
+                        VALUES (?, ?, ?, ?)
+                    ''', (row["tier_id"], row["perk_id"], row["created"], row["updated"]))
+                else:
+                    if row["updated"] > existing["updated"]:
+                        conn.execute('''
+                            UPDATE tier_perks SET created = ?, updated = ?
+                            WHERE tier_id = ? AND perk_id = ?
+                        ''', (row["created"], row["updated"], row["tier_id"], row["perk_id"]))
+
+            # MEMBER_PERKS (composite PK)
+            for row in payload.get("member_perks", []):
+                cur = conn.execute(
+                    'SELECT updated FROM member_perks WHERE member_id = ? AND perk_id = ?',
+                    (row["member_id"], row["perk_id"])
+                )
+                existing = cur.fetchone()
+                if not existing:
+                    conn.execute('''
+                        INSERT INTO member_perks (member_id, perk_id, perk_claimed, last_claimed, next_reset_date, updated)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (row["member_id"], row["perk_id"], row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["updated"]))
+                else:
+                    if row["updated"] > existing["updated"]:
+                        conn.execute('''
+                            UPDATE member_perks SET perk_claimed = ?, last_claimed = ?, next_reset_date = ?, updated = ?
+                            WHERE member_id = ? AND perk_id = ?
+                        ''', (row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["updated"], row["member_id"], row["perk_id"]))
+
+            # DELETED
+            for row in payload.get("deleted", []):
+                # Always insert or replace, as deletions must propagate
+                conn.execute('''
+                    INSERT OR REPLACE INTO deleted (table_name, record_id, deleted_at)
+                    VALUES (?, ?, ?)
+                ''', (row["table_name"], row["record_id"], row["deleted_at"]))
+
             conn.commit()
+            log(f'[GET] 200 /sync/push')
+            return jsonify({'status': 'ok'})
         except Exception as e:
             log(f'SYNC_PUSH error: {e}')
+            conn.rollback()
+            return jsonify({'status': 'error', 'msg': str(e)})
         finally:
             conn.close()
-        log(f'[GET] 200 /sync/push')
-        return ('OK', 200)
 
 def sync_with_peer():
     peer_ip = "10.243.4.245"  # ZeroTier IP of KL Laptop
