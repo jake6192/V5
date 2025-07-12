@@ -24,9 +24,10 @@ ENABLE_SYNC_LOGS = True  # Set False to suppress sync-related errors
 log_buffer = deque(maxlen=1000)
 log_lock = threading.Lock()
 def log(message):
-    print(message)
+    timestamp = datetime.now().strftime("[%H:%M:%S]")
+    print(f"{timestamp} {message}")
     with log_lock:
-        log_buffer.append(message)
+        log_buffer.append(f"{timestamp} {message}")
 def log_exception(exc_type, exc_value, exc_tb):
     error_message = ''.join(traceback.format_exception(exc_type, exc_value, exc_tb))
     log('[EXCEPTION]\n' + error_message)
@@ -68,6 +69,11 @@ def ensure_column_exists():
 def get_logs():
     with log_lock:
         return jsonify(list(log_buffer)[-100:])
+@app.route('/logs/clear', methods=['POST'])
+def clear_logs():
+    with log_lock:
+        log_buffer.clear()
+    return ('OK', 200)
 
 @app.route('/download-db')
 def download_db():
