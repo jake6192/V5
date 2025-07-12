@@ -597,112 +597,124 @@ def sync_pull():
 @app.route('/sync/push', methods=['POST'])
 def sync_push():
     with db_lock:
+        log("[SYNC] Received push request")
         payload = request.get_json()
         conn = get_connection()
         try:
             if payload is None:
+                log("[SYNC] Error: No JSON received in push")
                 return jsonify({'status': 'error', 'msg': 'No JSON received'}), 400
 
             # MEMBERS
             for row in payload.get("members", []):
-                cur = conn.execute('SELECT updated FROM members WHERE id = ?', (row["id"],))
+                cur = conn.execute('SELECT last_updated FROM members WHERE id = ?', (row["id"],))
                 existing = cur.fetchone()
                 if not existing:
+                    log(f"[SYNC] Adding new member {row['id']}")
                     conn.execute('''
-                        INSERT INTO members (id, name, tier_id, sign_up_date, date_of_birth, updated)
+                        INSERT INTO members (id, name, tier_id, sign_up_date, date_of_birth, last_updated)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (row["id"], row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["updated"]))
+                    ''', (row["id"], row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["last_updated"]))
                 else:
-                    if row["updated"] > existing["updated"]:
+                    if row["last_updated"] > existing["last_updated"]:
+                        log(f"[SYNC] Updating member {row['id']}")
                         conn.execute('''
-                            UPDATE members SET name = ?, tier_id = ?, sign_up_date = ?, date_of_birth = ?, updated = ?
+                            UPDATE members SET name = ?, tier_id = ?, sign_up_date = ?, date_of_birth = ?, last_updated = ?
                             WHERE id = ?
-                        ''', (row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["updated"], row["id"]))
+                        ''', (row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["last_updated"], row["id"]))
 
             # TIERS
             for row in payload.get("tiers", []):
-                cur = conn.execute('SELECT updated FROM tiers WHERE id = ?', (row["id"],))
+                cur = conn.execute('SELECT last_updated FROM tiers WHERE id = ?', (row["id"],))
                 existing = cur.fetchone()
                 if not existing:
+                    log(f"[SYNC] Adding new tier {row['id']}")
                     conn.execute('''
-                        INSERT INTO tiers (id, name, color, updated)
+                        INSERT INTO tiers (id, name, color, last_updated)
                         VALUES (?, ?, ?, ?)
-                    ''', (row["id"], row["name"], row["color"], row["updated"]))
+                    ''', (row["id"], row["name"], row["color"], row["last_updated"]))
                 else:
-                    if row["updated"] > existing["updated"]:
+                    if row["last_updated"] > existing["last_updated"]:
+                        log(f"[SYNC] Updating tier {row['id']}")
                         conn.execute('''
-                            UPDATE tiers SET name = ?, color = ?, updated = ?
+                            UPDATE tiers SET name = ?, color = ?, last_updated = ?
                             WHERE id = ?
-                        ''', (row["name"], row["color"], row["updated"], row["id"]))
+                        ''', (row["name"], row["color"], row["last_updated"], row["id"]))
 
             # PERKS
             for row in payload.get("perks", []):
-                cur = conn.execute('SELECT updated FROM perks WHERE id = ?', (row["id"],))
+                cur = conn.execute('SELECT last_updated FROM perks WHERE id = ?', (row["id"],))
                 existing = cur.fetchone()
                 if not existing:
+                    log(f"[SYNC] Adding new perk {row['id']}")
                     conn.execute('''
-                        INSERT INTO perks (id, name, description, reset_interval, updated)
+                        INSERT INTO perks (id, name, description, reset_interval, last_updated)
                         VALUES (?, ?, ?, ?, ?)
-                    ''', (row["id"], row["name"], row["description"], row["reset_interval"], row["updated"]))
+                    ''', (row["id"], row["name"], row["description"], row["reset_interval"], row["last_updated"]))
                 else:
-                    if row["updated"] > existing["updated"]:
+                    if row["last_updated"] > existing["last_updated"]:
+                        log(f"[SYNC] Updating perk {row['id']}")
                         conn.execute('''
-                            UPDATE perks SET name = ?, description = ?, reset_interval = ?, updated = ?
+                            UPDATE perks SET name = ?, description = ?, reset_interval = ?, last_updated = ?
                             WHERE id = ?
-                        ''', (row["name"], row["description"], row["reset_interval"], row["updated"], row["id"]))
+                        ''', (row["name"], row["description"], row["reset_interval"], row["last_updated"], row["id"]))
 
             # TIER_PERKS (composite PK)
             for row in payload.get("tier_perks", []):
                 cur = conn.execute(
-                    'SELECT updated FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
+                    'SELECT last_updated FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
                     (row["tier_id"], row["perk_id"])
                 )
                 existing = cur.fetchone()
                 if not existing:
+                    log(f"[SYNC] Adding new tier_perk {row['tier_id']}, {row['perk_id']}")
                     conn.execute('''
-                        INSERT INTO tier_perks (tier_id, perk_id, created, updated)
+                        INSERT INTO tier_perks (tier_id, perk_id, created, last_updated)
                         VALUES (?, ?, ?, ?)
-                    ''', (row["tier_id"], row["perk_id"], row["created"], row["updated"]))
+                    ''', (row["tier_id"], row["perk_id"], row["created"], row["last_updated"]))
                 else:
-                    if row["updated"] > existing["updated"]:
+                    if row["last_updated"] > existing["last_updated"]:
+                        log(f"[SYNC] Updating tier_perk {row['tier_id']}, {row['perk_id']}")
                         conn.execute('''
-                            UPDATE tier_perks SET created = ?, updated = ?
+                            UPDATE tier_perks SET created = ?, last_updated = ?
                             WHERE tier_id = ? AND perk_id = ?
-                        ''', (row["created"], row["updated"], row["tier_id"], row["perk_id"]))
+                        ''', (row["created"], row["last_updated"], row["tier_id"], row["perk_id"]))
 
             # MEMBER_PERKS (composite PK)
             for row in payload.get("member_perks", []):
                 cur = conn.execute(
-                    'SELECT updated FROM member_perks WHERE member_id = ? AND perk_id = ?',
+                    'SELECT last_updated FROM member_perks WHERE member_id = ? AND perk_id = ?',
                     (row["member_id"], row["perk_id"])
                 )
                 existing = cur.fetchone()
                 if not existing:
+                    log(f"[SYNC] Adding new member_perk {row['member_id']}, {row['perk_id']}")
                     conn.execute('''
-                        INSERT INTO member_perks (member_id, perk_id, perk_claimed, last_claimed, next_reset_date, updated)
+                        INSERT INTO member_perks (member_id, perk_id, perk_claimed, last_claimed, next_reset_date, last_updated)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (row["member_id"], row["perk_id"], row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["updated"]))
+                    ''', (row["member_id"], row["perk_id"], row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["last_updated"]))
                 else:
-                    if row["updated"] > existing["updated"]:
+                    if row["last_updated"] > existing["last_updated"]:
+                        log(f"[SYNC] Updating member_perk {row['member_id']}, {row['perk_id']}")
                         conn.execute('''
-                            UPDATE member_perks SET perk_claimed = ?, last_claimed = ?, next_reset_date = ?, updated = ?
+                            UPDATE member_perks SET perk_claimed = ?, last_claimed = ?, next_reset_date = ?, last_updated = ?
                             WHERE member_id = ? AND perk_id = ?
-                        ''', (row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["updated"], row["member_id"], row["perk_id"]))
+                        ''', (row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["last_updated"], row["member_id"], row["perk_id"]))
 
             # DELETED
             for row in payload.get("deleted", []):
-                # Always insert or replace, as deletions must propagate
+                log(f"[SYNC] Deletion record {row['table_name']}:{row['record_id']}")
                 conn.execute('''
                     INSERT OR REPLACE INTO deleted (table_name, record_id, deleted_at)
                     VALUES (?, ?, ?)
                 ''', (row["table_name"], row["record_id"], row["deleted_at"]))
 
             conn.commit()
-            log(f'[GET] 200 /sync/push')
+            log("[SYNC] Push complete")
             return jsonify({'status': 'ok'})
         except Exception as e:
-            log(f'SYNC_PUSH error: {e}')
             conn.rollback()
+            log(f"[EXCEPTION]\n{str(e)}")
             return jsonify({'status': 'error', 'msg': str(e)})
         finally:
             conn.close()
