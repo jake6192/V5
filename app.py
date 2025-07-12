@@ -19,7 +19,7 @@ CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
 ENABLE_SYNC_LOGS = True  # Set False to suppress sync-related errors
-db_lock = threading.Lock()
+db_lock = threading.RLock()
 
 # Forward all logging to browser console, as python console is hidden from view.
 log_buffer = deque(maxlen=1000)
