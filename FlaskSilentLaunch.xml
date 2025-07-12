@@ -2,8 +2,8 @@
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
     <Date>2025-07-03T23:00:00</Date>
-    <Author>Ollie Martin</Author>
-    <Description>Launch Flask app silently on login</Description>
+    <Author>Jake Salo</Author>
+    <Description>Launch Flask Member Tracking app silently on login</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
