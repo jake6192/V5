@@ -609,6 +609,8 @@ def sync_push():
             for row in payload.get("members", []):
                 cur = conn.execute('SELECT last_updated FROM members WHERE id = ?', (row["id"],))
                 existing = cur.fetchone()
+                incoming_ts = row["last_updated"]
+                existing_ts = existing["last_updated"] if existing else None
                 if not existing:
                     log(f"[SYNC] Adding new member {row['id']}")
                     conn.execute('''
@@ -616,7 +618,9 @@ def sync_push():
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', (row["id"], row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["last_updated"]))
                 else:
-                    if row["last_updated"] > existing["last_updated"]:
+                    if incoming_ts is None and existing_ts is None:
+                        log(f"[SYNC] Both timestamps are None for member {row['id']} (skipping update)")
+                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
                         log(f"[SYNC] Updating member {row['id']}")
                         conn.execute('''
                             UPDATE members SET name = ?, tier_id = ?, sign_up_date = ?, date_of_birth = ?, last_updated = ?
@@ -627,6 +631,8 @@ def sync_push():
             for row in payload.get("tiers", []):
                 cur = conn.execute('SELECT last_updated FROM tiers WHERE id = ?', (row["id"],))
                 existing = cur.fetchone()
+                incoming_ts = row["last_updated"]
+                existing_ts = existing["last_updated"] if existing else None
                 if not existing:
                     log(f"[SYNC] Adding new tier {row['id']}")
                     conn.execute('''
@@ -634,7 +640,9 @@ def sync_push():
                         VALUES (?, ?, ?, ?)
                     ''', (row["id"], row["name"], row["color"], row["last_updated"]))
                 else:
-                    if row["last_updated"] > existing["last_updated"]:
+                    if incoming_ts is None and existing_ts is None:
+                        log(f"[SYNC] Both timestamps are None for tier {row['id']} (skipping update)")
+                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
                         log(f"[SYNC] Updating tier {row['id']}")
                         conn.execute('''
                             UPDATE tiers SET name = ?, color = ?, last_updated = ?
@@ -645,6 +653,8 @@ def sync_push():
             for row in payload.get("perks", []):
                 cur = conn.execute('SELECT last_updated FROM perks WHERE id = ?', (row["id"],))
                 existing = cur.fetchone()
+                incoming_ts = row["last_updated"]
+                existing_ts = existing["last_updated"] if existing else None
                 if not existing:
                     log(f"[SYNC] Adding new perk {row['id']}")
                     conn.execute('''
@@ -652,7 +662,9 @@ def sync_push():
                         VALUES (?, ?, ?, ?, ?)
                     ''', (row["id"], row["name"], row["description"], row["reset_interval"], row["last_updated"]))
                 else:
-                    if row["last_updated"] > existing["last_updated"]:
+                    if incoming_ts is None and existing_ts is None:
+                        log(f"[SYNC] Both timestamps are None for perk {row['id']} (skipping update)")
+                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
                         log(f"[SYNC] Updating perk {row['id']}")
                         conn.execute('''
                             UPDATE perks SET name = ?, description = ?, reset_interval = ?, last_updated = ?
@@ -666,6 +678,8 @@ def sync_push():
                     (row["tier_id"], row["perk_id"])
                 )
                 existing = cur.fetchone()
+                incoming_ts = row["last_updated"]
+                existing_ts = existing["last_updated"] if existing else None
                 if not existing:
                     log(f"[SYNC] Adding new tier_perk {row['tier_id']}, {row['perk_id']}")
                     conn.execute('''
@@ -673,7 +687,9 @@ def sync_push():
                         VALUES (?, ?, ?, ?)
                     ''', (row["tier_id"], row["perk_id"], row["created"], row["last_updated"]))
                 else:
-                    if row["last_updated"] > existing["last_updated"]:
+                    if incoming_ts is None and existing_ts is None:
+                        log(f"[SYNC] Both timestamps are None for tier_perk {row['tier_id']},{row['perk_id']} (skipping update)")
+                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
                         log(f"[SYNC] Updating tier_perk {row['tier_id']}, {row['perk_id']}")
                         conn.execute('''
                             UPDATE tier_perks SET created = ?, last_updated = ?
@@ -687,6 +703,8 @@ def sync_push():
                     (row["member_id"], row["perk_id"])
                 )
                 existing = cur.fetchone()
+                incoming_ts = row["last_updated"]
+                existing_ts = existing["last_updated"] if existing else None
                 if not existing:
                     log(f"[SYNC] Adding new member_perk {row['member_id']}, {row['perk_id']}")
                     conn.execute('''
@@ -694,7 +712,9 @@ def sync_push():
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', (row["member_id"], row["perk_id"], row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["last_updated"]))
                 else:
-                    if row["last_updated"] > existing["last_updated"]:
+                    if incoming_ts is None and existing_ts is None:
+                        log(f"[SYNC] Both timestamps are None for member_perk {row['member_id']},{row['perk_id']} (skipping update)")
+                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
                         log(f"[SYNC] Updating member_perk {row['member_id']}, {row['perk_id']}")
                         conn.execute('''
                             UPDATE member_perks SET perk_claimed = ?, last_claimed = ?, next_reset_date = ?, last_updated = ?
