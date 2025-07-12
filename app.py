@@ -598,7 +598,7 @@ def sync_pull():
 def sync_push():
     with db_lock:
         payload = request.get_json()
-        conn = get_db()
+        conn = connect_db()
         try:
             if payload is None:
                 return jsonify({'status': 'error', 'msg': 'No JSON received'}), 400
