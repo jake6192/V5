@@ -19,6 +19,7 @@ CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
 ENABLE_SYNC_LOGS = True  # Set False to suppress sync-related errors
+db_lock = threading.Lock()
 
 # Forward all logging to browser console, as python console is hidden from view.
 log_buffer = deque(maxlen=1000)
@@ -582,86 +583,88 @@ def reset_perk():
 # VPN SYNC ROUTES
 @app.route('/sync/pull', methods=['GET'])
 def sync_pull():
-    conn = get_connection()
-    c = conn.cursor()
-    data = {}
-    for table in ['members', 'tiers', 'perks', 'tier_perks', 'member_perks']:
-        c.execute(f'SELECT * FROM {table}')
-        data[table] = [dict(row) for row in c.fetchall()]
-    conn.close()
-    log(f'[GET] 200 /sync/pull')
-    return jsonify(data)
+    with db_lock:
+        conn = get_connection()
+        c = conn.cursor()
+        data = {}
+        for table in ['members', 'tiers', 'perks', 'tier_perks', 'member_perks']:
+            c.execute(f'SELECT * FROM {table}')
+            data[table] = [dict(row) for row in c.fetchall()]
+        conn.close()
+        log(f'[GET] 200 /sync/pull')
+        return jsonify(data)
 
 @app.route('/sync/push', methods=['POST'])
 def sync_push():
-    payload = request.get_json()
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        for row in payload.get('members', []):
-            required = ['member_id', 'name', 'location', 'tier_id', 'sign_up_date', 'date_of_birth', 'last_updated']
-            if not all(field in row for field in required):
-                continue
-            try:
-                c.execute('SELECT last_updated FROM members WHERE member_id = ?', (row['member_id'],))
-                existing = c.fetchone()
-                local_ts = existing['last_updated'] if existing and existing['last_updated'] else ''
-                remote_ts = row.get('last_updated', '')
-                if not remote_ts or remote_ts < local_ts:
-                    continue
-                c.execute('SELECT COUNT(*) FROM members WHERE member_id = ?', (row['member_id'],))
-                exists = c.fetchone()[0] > 0
-                if exists:
-                    c.execute('''
-                        UPDATE members SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
-                        WHERE member_id=?
-                    ''', (row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts, row['member_id']))
-                else:
-                    c.execute('''
-                        INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (row['member_id'], row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts))
-            except Exception as e:
-                log(f'Member merge error: {e}')
-        for table in ['tiers', 'perks']:
-            for row in payload.get(table, []):
-                required = ['id', 'name', 'color', 'last_updated'] if table == 'tiers' else ['id', 'name', 'reset_period', 'last_updated']
+    with db_lock:
+        payload = request.get_json()
+        conn = get_connection()
+        c = conn.cursor()
+        try:
+            for row in payload.get('members', []):
+                required = ['member_id', 'name', 'location', 'tier_id', 'sign_up_date', 'date_of_birth', 'last_updated']
                 if not all(field in row for field in required):
                     continue
                 try:
-                    c.execute(f'SELECT COUNT(*) FROM {table} WHERE id=?', (row['id'],))
+                    c.execute('SELECT last_updated FROM members WHERE member_id = ?', (row['member_id'],))
+                    existing = c.fetchone()
+                    local_ts = existing['last_updated'] if existing and existing['last_updated'] else ''
+                    remote_ts = row.get('last_updated', '')
+                    if not remote_ts or remote_ts < local_ts:
+                        continue
+                    c.execute('SELECT COUNT(*) FROM members WHERE member_id = ?', (row['member_id'],))
                     exists = c.fetchone()[0] > 0
                     if exists:
-                        cols = ', '.join([f"{k}=?" for k in row if k != 'id'])
-                        vals = [row[k] for k in row if k != 'id'] + [row['id']]
-                        c.execute(f'UPDATE {table} SET {cols} WHERE id=?', vals)
+                        c.execute('''
+                            UPDATE members SET name=?, location=?, tier_id=?, sign_up_date=?, date_of_birth=?, last_updated=?
+                            WHERE member_id=?
+                        ''', (row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts, row['member_id']))
                     else:
-                        keys = ', '.join(row.keys())
-                        qmarks = ', '.join(['?'] * len(row))
-                        c.execute(f'INSERT INTO {table} ({keys}) VALUES ({qmarks})', tuple(row.values()))
+                        c.execute('''
+                            INSERT INTO members (member_id, name, location, tier_id, sign_up_date, date_of_birth, last_updated)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (row['member_id'], row['name'], row['location'], row['tier_id'], row['sign_up_date'], row['date_of_birth'], remote_ts))
                 except Exception as e:
-                    log(f'{table} merge error: {e}')
-        for table in ['tier_perks', 'member_perks']:
-            for row in payload.get(table, []):
-                required = ['tier_id', 'perk_id'] if table == 'tier_perks' else ['member_id', 'perk_id', 'perk_claimed', 'last_claimed']
-                if not all(field in row for field in required):
-                    continue
-                try:
-                    keys = list(row.keys())
-                    conditions = ' AND '.join([f"{k}=?" for k in keys])
-                    c.execute(f'SELECT COUNT(*) FROM {table} WHERE {conditions}', tuple(row[k] for k in keys))
-                    exists = c.fetchone()[0] > 0
-                    if not exists:
-                        c.execute(f'INSERT INTO {table} ({", ".join(keys)}) VALUES ({", ".join(["?"]*len(keys))})', tuple(row.values()))
-                except Exception as e:
-                    log(f'{table} merge error: {e}')
-        conn.commit()
-    except Exception as e:
-        log(f'SYNC_PUSH error: {e}')
-    finally:
-        conn.close()
-    log(f'[GET] 200 /sync/push')
-    return ('OK', 200)
+                    log(f'Member merge error: {e}')
+            for table in ['tiers', 'perks']:
+                for row in payload.get(table, []):
+                    required = ['id', 'name', 'color', 'last_updated'] if table == 'tiers' else ['id', 'name', 'reset_period', 'last_updated']
+                    if not all(field in row for field in required):
+                        continue
+                    try:
+                        c.execute(f'SELECT COUNT(*) FROM {table} WHERE id=?', (row['id'],))
+                        exists = c.fetchone()[0] > 0
+                        if exists:
+                            cols = ', '.join([f"{k}=?" for k in row if k != 'id'])
+                            vals = [row[k] for k in row if k != 'id'] + [row['id']]
+                            c.execute(f'UPDATE {table} SET {cols} WHERE id=?', vals)
+                        else:
+                            keys = ', '.join(row.keys())
+                            qmarks = ', '.join(['?'] * len(row))
+                            c.execute(f'INSERT INTO {table} ({keys}) VALUES ({qmarks})', tuple(row.values()))
+                    except Exception as e:
+                        log(f'{table} merge error: {e}')
+            for table in ['tier_perks', 'member_perks']:
+                for row in payload.get(table, []):
+                    required = ['tier_id', 'perk_id'] if table == 'tier_perks' else ['member_id', 'perk_id', 'perk_claimed', 'last_claimed']
+                    if not all(field in row for field in required):
+                        continue
+                    try:
+                        keys = list(row.keys())
+                        conditions = ' AND '.join([f"{k}=?" for k in keys])
+                        c.execute(f'SELECT COUNT(*) FROM {table} WHERE {conditions}', tuple(row[k] for k in keys))
+                        exists = c.fetchone()[0] > 0
+                        if not exists:
+                            c.execute(f'INSERT INTO {table} ({", ".join(keys)}) VALUES ({", ".join(["?"]*len(keys))})', tuple(row.values()))
+                    except Exception as e:
+                        log(f'{table} merge error: {e}')
+            conn.commit()
+        except Exception as e:
+            log(f'SYNC_PUSH error: {e}')
+        finally:
+            conn.close()
+        log(f'[GET] 200 /sync/push')
+        return ('OK', 200)
 
 def sync_with_peer():
     peer_ip = "10.243.4.245"  # ZeroTier IP of KL Laptop
