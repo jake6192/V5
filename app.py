@@ -70,8 +70,14 @@ def download_db():
 
 def get_connection():
     conn = sqlite3.connect(DB, timeout=30)
-    conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
-    conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
+    try:
+        conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
+    except Exception as e:
+        log('[HARDENED DB ERROR] Line 76: ' + str(e))
+    try:
+        conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
+    except Exception as e:
+        log('[HARDENED DB ERROR] Line 80: ' + str(e))
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -121,17 +127,23 @@ def check_and_reset_member_perks(member_id):
         c = conn.cursor()
         today = datetime.now().strftime("%Y-%m-%d")
 
-        c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (member_id,))
+        try:
+            c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (member_id,))
+        except Exception as e:
+            log('[HARDENED DB ERROR] Line 133: ' + str(e))
         member = c.fetchone()
         if not member:
             return
 
-        c.execute('''
-            SELECT mp.member_id, mp.perk_id, mp.last_claimed, p.reset_period
-            FROM member_perks mp
-            JOIN perks p ON mp.perk_id = p.id
-            WHERE mp.member_id = ?
-        ''', (member_id,))
+        try:
+            c.execute('''
+                SELECT mp.member_id, mp.perk_id, mp.last_claimed, p.reset_period
+                FROM member_perks mp
+                JOIN perks p ON mp.perk_id = p.id
+                WHERE mp.member_id = ?
+            ''', (member_id,))
+        except Exception as e:
+            log('[HARDENED DB ERROR] Line 146: ' + str(e))
         rows = c.fetchall()
 
         for row in rows:
@@ -147,12 +159,17 @@ def check_and_reset_member_perks(member_id):
                 reset = should_reset_yearly(row['last_claimed'], member['date_of_birth'])
 
             if reset:
-                c.execute('''
-                    DELETE FROM member_perks
-                    WHERE member_id = ? AND perk_id = ?
-                ''', (member_id, row['perk_id']))
-
-        conn.commit()
+                try:
+                    c.execute('''
+                        DELETE FROM member_perks
+                        WHERE member_id = ? AND perk_id = ?
+                    ''', (member_id, row['perk_id']))
+                except Exception as e:
+                    log('[HARDENED DB ERROR] Line 168: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[HARDENED DB ERROR] Line 172: ' + str(e))
     finally:
         conn.close()
 
@@ -222,43 +239,66 @@ def create_or_edit_member():
         c = conn.cursor()
         if 'id' in data and data['id']:
             # Find the previous member_id for this row
-            c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
+            try:
+                c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
+            except Exception as e:
+                log('[HARDENED DB ERROR] Line 245: ' + str(e))
             old = c.fetchone()
             old_member_id = old['member_id'] if old else None
             # Update the member row
-            c.execute('''
-                UPDATE members SET member_id=?, name=?, tier_id=?, sign_up_date=?, date_of_birth=?, location=?
-                WHERE id=?
-            ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location'], data['id']))
+            try:
+                c.execute('''
+                    UPDATE members SET member_id=?, name=?, tier_id=?, sign_up_date=?, date_of_birth=?, location=?
+                    WHERE id=?
+                ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location'], data['id']))
+            except Exception as e:
+                log('[HARDENED DB ERROR] Line 255: ' + str(e))
             # If member_id changed, update all member_perks rows
             if old_member_id and str(old_member_id) != str(data['member_id']):
-                c.execute('''
-                    UPDATE member_perks SET member_id=? WHERE member_id=?
-                ''', (data['member_id'], old_member_id))
-            c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
+                try:
+                    c.execute('UPDATE member_perks SET member_id=? WHERE member_id=?', (data['member_id'], old_member_id))
+                except Exception as e:
+                    log('[HARDENED DB ERROR] Line 261: ' + str(e))
+            try:
+                c.execute('SELECT member_id FROM members WHERE id=?', (data['id'],))
+            except Exception as e:
+                log('[HARDENED DB ERROR] Line 265: ' + str(e))
             mid_row = c.fetchone()
             if mid_row:
                 mid = mid_row['member_id']
-                c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id=?', (mid,))
+                 try:
+                     c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id=?', (mid,))
+                 except Exception as e:
+                     log('[DB ERROR] Line 272: ' + str(e))
                 member = c.fetchone()
-                c.execute('''
-                    SELECT mp.perk_id, p.reset_period FROM member_perks mp
-                    JOIN perks p ON mp.perk_id = p.id
-                    WHERE mp.member_id=?
-                ''', (mid,))
+                 try:
+                     c.execute('''
+                        SELECT mp.perk_id, p.reset_period FROM member_perks mp
+                        JOIN perks p ON mp.perk_id = p.id
+                        WHERE mp.member_id=?
+                    ''', (mid,))
+                except Exception as e:
+                     log('[DB ERROR] Line 281: ' + str(e))
                 claimed_perks = c.fetchall()
                 for perk in claimed_perks:
                     next_reset = calculate_next_reset(perk['reset_period'], {
                         "sign_up_date": member["sign_up_date"],
                         "date_of_birth": member["date_of_birth"]
                     })
-                    c.execute('UPDATE member_perks SET next_reset_date=? WHERE member_id=? AND perk_id=?',
+                     try:
+                         c.execute('UPDATE member_perks SET next_reset_date=? WHERE member_id=? AND perk_id=?',
+                     except Exception as e:
+                         log('[DB ERROR] Line 291: ' + str(e))
                               (next_reset, mid, perk['perk_id']))
         else:
-            c.execute('''
-                INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location) VALUES (?, ?, ?, ?, ?, ?)
-            ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
-        conn.commit()
+             try:
+                 c.execute('INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location) VALUES (?, ?, ?, ?, ?, ?)', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
+            except Exception as e:
+                 log('[DB ERROR] Line 297: ' + str(e))
+         try:
+             conn.commit()
+         except Exception as e:
+             log('[DB ERROR] Line 301: ' + str(e))
         log(f'[POST] 200 /api/members')
         return ('OK', 200)
     finally:
@@ -269,9 +309,18 @@ def delete_member(member_id):
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute('DELETE FROM member_perks WHERE member_id = ?', (member_id,))
-        c.execute('DELETE FROM members WHERE member_id = ?', (member_id,))
-        conn.commit()
+        try:
+            c.execute('DELETE FROM member_perks WHERE member_id = ?', (member_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 315: ' + str(e))
+        try:
+            c.execute('DELETE FROM members WHERE member_id = ?', (member_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 319: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 323: ' + str(e))
         log(f'[DELETE] 200 /api/members/{member_id}')
         return ('OK', 200)
     finally:
@@ -314,12 +363,21 @@ def create_or_edit_tier():
         try:
             c = conn.cursor()
             if 'id' in data and data['id']:
-                c.execute('UPDATE tiers SET name=?, color=? WHERE id=?',
+                 try:
+                     c.execute('UPDATE tiers SET name=?, color=? WHERE id=?',
+                 except Exception as e:
+                     log('[DB ERROR] Line 369: ' + str(e))
                           (data['name'], data['color'], data['id']))
             else:
-                c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)',
+                 try:
+                     c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)',
+                 except Exception as e:
+                     log('[DB ERROR] Line 375: ' + str(e))
                           (data['name'], data['color']))
-            conn.commit()
+             try:
+                 conn.commit()
+             except Exception as e:
+                 log('[DB ERROR] Line 380: ' + str(e))
             log(f'[POST] 200 /api/tiers')
             return ('OK', 200)
         finally:
@@ -330,9 +388,18 @@ def delete_tier(tier_id):
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute('DELETE FROM tier_perks WHERE tier_id = ?', (tier_id,))
-        c.execute('DELETE FROM tiers WHERE id = ?', (tier_id,))
-        conn.commit()
+        try:
+            c.execute('DELETE FROM tier_perks WHERE tier_id = ?', (tier_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 394: ' + str(e))
+        try:
+            c.execute('DELETE FROM tiers WHERE id = ?', (tier_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 398: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 402: ' + str(e))
         log(f'[DELETE] 200 /api/tiers/{tier_id}')
         return ('OK', 200)
     finally:
@@ -385,12 +452,21 @@ def create_or_edit_perk():
         try:
             c = conn.cursor()
             if 'id' in data and data['id']:
-                c.execute('UPDATE perks SET name=?, reset_period=? WHERE id=?',
+                 try:
+                     c.execute('UPDATE perks SET name=?, reset_period=? WHERE id=?',
+                 except Exception as e:
+                     log('[DB ERROR] Line 458: ' + str(e))
                           (data['name'], data['reset_period'], data['id']))
             else:
-                c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
+                 try:
+                     c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
+                 except Exception as e:
+                     log('[DB ERROR] Line 464: ' + str(e))
                           (data['name'], data['reset_period']))
-            conn.commit()
+             try:
+                 conn.commit()
+             except Exception as e:
+                 log('[DB ERROR] Line 469: ' + str(e))
             log(f'[POST] 200 /api/perks')
             return ('OK', 200)
         finally:
@@ -402,10 +478,22 @@ def delete_perk(perk_id):
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute('DELETE FROM tier_perks WHERE perk_id = ?', (perk_id,))
-        c.execute('DELETE FROM member_perks WHERE perk_id = ?', (perk_id,))
-        c.execute('DELETE FROM perks WHERE id = ?', (perk_id,))
-        conn.commit()
+        try:
+            c.execute('DELETE FROM tier_perks WHERE perk_id = ?', (perk_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 484: ' + str(e))
+        try:
+            c.execute('DELETE FROM member_perks WHERE perk_id = ?', (perk_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 488: ' + str(e))
+        try:
+            c.execute('DELETE FROM perks WHERE id = ?', (perk_id,))
+        except Exception as e:
+            log('[DB ERROR] Line 492: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 496: ' + str(e))
         log(f'[DELETE] 200 /api/perks/{perk_id}')
         return ('OK', 200)
     finally:
@@ -443,15 +531,18 @@ def assign_perk_to_tier():
         conn = get_connection()
         try:
             c = conn.cursor()
-            c.execute('INSERT INTO tier_perks (tier_id, perk_id) VALUES (?, ?)',
-                      (data['tier_id'], data['perk_id']))
-
-            c.execute('SELECT member_id FROM members WHERE tier_id = ?', (data['tier_id'],))
-            members = c.fetchall()
-            for m in members:
-                # No need to insert member_perks row, will be created on claim
-                pass
-            conn.commit()
+            try:
+                c.execute('INSERT INTO tier_perks (tier_id, perk_id) VALUES (?, ?)', (data['tier_id'], data['perk_id']))
+            except Exception as e:
+                log('[DB ERROR] Line 537: ' + str(e))
+            try:
+                c.execute('SELECT member_id FROM members WHERE tier_id = ?', (data['tier_id'],))
+            except Exception as e:
+                log('[DB ERROR] Line 541: ' + str(e))
+            try:
+                conn.commit()
+            except Exception as e:
+                log('[DB ERROR] Line 545: ' + str(e))
             log(f'[POST] 200 /api/tier_perks')
             return ('OK', 200)
         finally:
@@ -464,9 +555,14 @@ def unassign_perk_from_tier():
     conn = get_connection()
     try:
         c = conn.cursor()
-        c.execute('DELETE FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
-                  (data['tier_id'], data['perk_id']))
-        conn.commit()
+        try:
+            c.execute('DELETE FROM tier_perks WHERE tier_id = ? AND perk_id = ?', (data['tier_id'], data['perk_id']))
+        except Exception as e:
+            log('[DB ERROR] Line 561: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 565: ' + str(e))
         log(f'[DELETE] 200 /api/tier_perks')
         return ('OK', 200)
     finally:
@@ -485,30 +581,35 @@ def get_member_perks(member_id):
             log(f'[GET] 404 /api/member_perks/{member_id}  ~~  member not found')
             return jsonify([])
 
-        c.execute('''
-            SELECT 
-                p.id, p.name, p.reset_period,
-                mp.last_claimed, mp.next_reset_date
-            FROM tier_perks tp
-            JOIN perks p ON tp.perk_id = p.id
-            LEFT JOIN member_perks mp
-              ON mp.perk_id = p.id AND mp.member_id = ?
-            WHERE tp.tier_id = ?
-            ORDER BY
-              CASE p.reset_period
-                WHEN 'Weekly' THEN 1
-                WHEN 'Monthly' THEN 2
-                WHEN 'Yearly' THEN 3
-                WHEN 'Unlimited' THEN 4
-                ELSE 5
-              END
-        ''', (member_id, member['tier_id']))
-
+        try:
+            c.execute('''
+                SELECT 
+                    p.id, p.name, p.reset_period,
+                    mp.last_claimed, mp.next_reset_date
+                FROM tier_perks tp
+                JOIN perks p ON tp.perk_id = p.id
+                LEFT JOIN member_perks mp
+                  ON mp.perk_id = p.id AND mp.member_id = ?
+                WHERE tp.tier_id = ?
+                ORDER BY
+                  CASE p.reset_period
+                    WHEN 'Weekly' THEN 1
+                    WHEN 'Monthly' THEN 2
+                    WHEN 'Yearly' THEN 3
+                    WHEN 'Unlimited' THEN 4
+                    ELSE 5
+                  END
+            ''', (member_id, member['tier_id']))
+        except Exception as e:
+            log('[DB ERROR] Line 604: ' + str(e))
         perks = [dict(row) for row in c.fetchall()]
         log(f'[GET] 200 /api/member_perks/{member_id}')
         return jsonify(perks)
     finally:
-        conn.commit()
+         try:
+             conn.commit()
+         except Exception as e:
+             log('[DB ERROR] Line 612: ' + str(e))
         conn.close()
 
 @app.route('/api/member_perks/claim', methods=['POST'])
@@ -520,26 +621,33 @@ def claim_perk():
         conn = get_connection()
         try:
             c = conn.cursor()
-            c.execute('SELECT reset_period FROM perks WHERE id = ?', (data['perk_id'],))
-            perk = c.fetchone()
-
-            c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (data['member_id'],))
+            try:
+                c.execute('SELECT reset_period FROM perks WHERE id = ?', (data['perk_id'],))
+            except Exception as e:
+                log('[DB ERROR] Line 627: ' + str(e))
+            try:
+                c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (data['member_id'],))
+            except Exception as e:
+                log('[DB ERROR] Line 631: ' + str(e))
             member = c.fetchone()
-
+            perk = c.fetchone()
             reset_period = perk["reset_period"] if perk else None
             member_data = {
                 "sign_up_date": member["sign_up_date"],
                 "date_of_birth": member["date_of_birth"]
             } if member else {}
-
             next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
-
-            c.execute('''
-                INSERT OR REPLACE INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
-                VALUES (?, ?, ?, ?)
-            ''', (data['member_id'], data['perk_id'], now, next_reset))
-
-            conn.commit()
+            try:
+                c.execute('''
+                    INSERT OR REPLACE INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
+                    VALUES (?, ?, ?, ?)
+                ''', (data['member_id'], data['perk_id'], now, next_reset))
+            except Exception as e:
+                log('[DB ERROR] Line 646: ' + str(e))
+            try:
+                conn.commit()
+            except Exception as e:
+                log('[DB ERROR] Line 650: ' + str(e))
             log(f'[POST] 200 /api/member_perks/claim')
             return ('OK', 200)
         finally:
@@ -555,7 +663,10 @@ def reset_perk():
             DELETE FROM member_perks
             WHERE member_id = ? AND perk_id = ?
         ''', (data['member_id'], data['perk_id']))
-        conn.commit()
+         try:
+             conn.commit()
+         except Exception as e:
+             log('[DB ERROR] Line 669: ' + str(e))
         log(f'[POST] 200 /api/member_perks/reset')
         return ('OK', 200)
     finally:
