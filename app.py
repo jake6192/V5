@@ -18,7 +18,6 @@ app = Flask(__name__)
 CORS(app)
 DB = 'tracking.db'
 DOWNLOAD_DB_PASSWORD = "GolfTec3914+"
-ENABLE_SYNC_LOGS = True  # Set False to suppress sync-related errors
 db_lock = threading.RLock()
 
 # Forward all logging to browser console, as python console is hidden from view.
@@ -43,28 +42,6 @@ def handle_exception(e):
 if not os.path.exists('tracking.db'):
     log("tracking.db not found. Running init_db.py...")
     subprocess.run(['python', 'init_db.py'])
-    
-def ensure_column_exists():
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        tables = {
-            'members': 'last_updated TEXT',
-            'tiers': 'last_updated TEXT',
-            'perks': 'last_updated TEXT',
-            'tier_perks': 'last_updated TEXT',
-            'member_perks': 'last_updated TEXT'
-        }
-        for table, column_def in tables.items():
-            c.execute(f"PRAGMA table_info({table})")
-            columns = [row['name'] for row in c.fetchall()]
-            if 'last_updated' not in columns:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {column_def}")
-        conn.commit()
-    except Exception as e:
-        log('Schema patch error:', e)
-    finally:
-        conn.close()
 
 @app.route('/logs')
 def get_logs():
@@ -279,12 +256,8 @@ def create_or_edit_member():
                               (next_reset, mid, perk['perk_id']))
         else:
             c.execute('''
-                INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location) VALUES (?, ?, ?, ?, ?, ?)
             ''', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
-        c.execute('''
-            UPDATE members SET last_updated = CURRENT_TIMESTAMP WHERE id = ?
-        ''', (data['id'],))
         conn.commit()
         log(f'[POST] 200 /api/members')
         return ('OK', 200)
@@ -341,10 +314,10 @@ def create_or_edit_tier():
         try:
             c = conn.cursor()
             if 'id' in data and data['id']:
-                c.execute('UPDATE tiers SET name=?, color=?, last_updated=CURRENT_TIMESTAMP WHERE id=?',
+                c.execute('UPDATE tiers SET name=?, color=? WHERE id=?',
                           (data['name'], data['color'], data['id']))
             else:
-                c.execute('INSERT INTO tiers (name, color, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)',
                           (data['name'], data['color']))
             conn.commit()
             log(f'[POST] 200 /api/tiers')
@@ -412,10 +385,10 @@ def create_or_edit_perk():
         try:
             c = conn.cursor()
             if 'id' in data and data['id']:
-                c.execute('UPDATE perks SET name=?, reset_period=?, last_updated=CURRENT_TIMESTAMP WHERE id=?',
+                c.execute('UPDATE perks SET name=?, reset_period=? WHERE id=?',
                           (data['name'], data['reset_period'], data['id']))
             else:
-                c.execute('INSERT INTO perks (name, reset_period, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)',
+                c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
                           (data['name'], data['reset_period']))
             conn.commit()
             log(f'[POST] 200 /api/perks')
@@ -470,7 +443,7 @@ def assign_perk_to_tier():
         conn = get_connection()
         try:
             c = conn.cursor()
-            c.execute('INSERT INTO tier_perks (tier_id, perk_id, last_updated) VALUES (?, ?, CURRENT_TIMESTAMP)',
+            c.execute('INSERT INTO tier_perks (tier_id, perk_id) VALUES (?, ?)',
                       (data['tier_id'], data['perk_id']))
 
             c.execute('SELECT member_id FROM members WHERE tier_id = ?', (data['tier_id'],))
@@ -588,183 +561,5 @@ def reset_perk():
     finally:
         conn.close()
 
-
-# VPN SYNC ROUTES
-@app.route('/sync/pull', methods=['GET'])
-def sync_pull():
-    with db_lock:
-        conn = get_connection()
-        c = conn.cursor()
-        data = {}
-        for table in ['members', 'tiers', 'perks', 'tier_perks', 'member_perks']:
-            c.execute(f'SELECT * FROM {table}')
-            data[table] = [dict(row) for row in c.fetchall()]
-        conn.close()
-        log(f'[GET] 200 /sync/pull')
-        return jsonify(data)
-
-@app.route('/sync/push', methods=['POST'])
-def sync_push():
-    with db_lock:
-        log("[SYNC] Received push request")
-        payload = request.get_json()
-        conn = get_connection()
-        try:
-            if payload is None:
-                log("[SYNC] Error: No JSON received in push")
-                return jsonify({'status': 'error', 'msg': 'No JSON received'}), 400
-
-            # MEMBERS
-            for row in payload.get("members", []):
-                cur = conn.execute('SELECT last_updated FROM members WHERE id = ?', (row["id"],))
-                existing = cur.fetchone()
-                incoming_ts = row["last_updated"]
-                existing_ts = existing["last_updated"] if existing else None
-                if not existing:
-                    log(f"[SYNC] Adding new member {row['id']}")
-                    conn.execute('''
-                        INSERT INTO members (id, name, tier_id, sign_up_date, date_of_birth, last_updated)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (row["id"], row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["last_updated"]))
-                else:
-                    if incoming_ts is None and existing_ts is None:
-                        log(f"[SYNC] Both timestamps are None for member {row['id']} (skipping update)")
-                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
-                        log(f"[SYNC] Updating member {row['id']}")
-                        conn.execute('''
-                            UPDATE members SET name = ?, tier_id = ?, sign_up_date = ?, date_of_birth = ?, last_updated = ?
-                            WHERE id = ?
-                        ''', (row["name"], row["tier_id"], row["sign_up_date"], row["date_of_birth"], row["last_updated"], row["id"]))
-
-            # TIERS
-            for row in payload.get("tiers", []):
-                cur = conn.execute('SELECT last_updated FROM tiers WHERE id = ?', (row["id"],))
-                existing = cur.fetchone()
-                incoming_ts = row["last_updated"]
-                existing_ts = existing["last_updated"] if existing else None
-                if not existing:
-                    log(f"[SYNC] Adding new tier {row['id']}")
-                    conn.execute('''
-                        INSERT INTO tiers (id, name, color, last_updated)
-                        VALUES (?, ?, ?, ?)
-                    ''', (row["id"], row["name"], row["color"], row["last_updated"]))
-                else:
-                    if incoming_ts is None and existing_ts is None:
-                        log(f"[SYNC] Both timestamps are None for tier {row['id']} (skipping update)")
-                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
-                        log(f"[SYNC] Updating tier {row['id']}")
-                        conn.execute('''
-                            UPDATE tiers SET name = ?, color = ?, last_updated = ?
-                            WHERE id = ?
-                        ''', (row["name"], row["color"], row["last_updated"], row["id"]))
-
-            # PERKS
-            for row in payload.get("perks", []):
-                cur = conn.execute('SELECT last_updated FROM perks WHERE id = ?', (row["id"],))
-                existing = cur.fetchone()
-                incoming_ts = row["last_updated"]
-                existing_ts = existing["last_updated"] if existing else None
-                if not existing:
-                    log(f"[SYNC] Adding new perk {row['id']}")
-                    conn.execute('''
-                        INSERT INTO perks (id, name, description, reset_interval, last_updated)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (row["id"], row["name"], row["description"], row["reset_interval"], row["last_updated"]))
-                else:
-                    if incoming_ts is None and existing_ts is None:
-                        log(f"[SYNC] Both timestamps are None for perk {row['id']} (skipping update)")
-                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
-                        log(f"[SYNC] Updating perk {row['id']}")
-                        conn.execute('''
-                            UPDATE perks SET name = ?, description = ?, reset_interval = ?, last_updated = ?
-                            WHERE id = ?
-                        ''', (row["name"], row["description"], row["reset_interval"], row["last_updated"], row["id"]))
-
-            # TIER_PERKS (composite PK)
-            for row in payload.get("tier_perks", []):
-                cur = conn.execute(
-                    'SELECT last_updated FROM tier_perks WHERE tier_id = ? AND perk_id = ?',
-                    (row["tier_id"], row["perk_id"])
-                )
-                existing = cur.fetchone()
-                incoming_ts = row["last_updated"]
-                existing_ts = existing["last_updated"] if existing else None
-                if not existing:
-                    log(f"[SYNC] Adding new tier_perk {row['tier_id']}, {row['perk_id']}")
-                    conn.execute('''
-                        INSERT INTO tier_perks (tier_id, perk_id, created, last_updated)
-                        VALUES (?, ?, ?, ?)
-                    ''', (row["tier_id"], row["perk_id"], row["created"], row["last_updated"]))
-                else:
-                    if incoming_ts is None and existing_ts is None:
-                        log(f"[SYNC] Both timestamps are None for tier_perk {row['tier_id']},{row['perk_id']} (skipping update)")
-                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
-                        log(f"[SYNC] Updating tier_perk {row['tier_id']}, {row['perk_id']}")
-                        conn.execute('''
-                            UPDATE tier_perks SET created = ?, last_updated = ?
-                            WHERE tier_id = ? AND perk_id = ?
-                        ''', (row["created"], row["last_updated"], row["tier_id"], row["perk_id"]))
-
-            # MEMBER_PERKS (composite PK)
-            for row in payload.get("member_perks", []):
-                cur = conn.execute(
-                    'SELECT last_updated FROM member_perks WHERE member_id = ? AND perk_id = ?',
-                    (row["member_id"], row["perk_id"])
-                )
-                existing = cur.fetchone()
-                incoming_ts = row["last_updated"]
-                existing_ts = existing["last_updated"] if existing else None
-                if not existing:
-                    log(f"[SYNC] Adding new member_perk {row['member_id']}, {row['perk_id']}")
-                    conn.execute('''
-                        INSERT INTO member_perks (member_id, perk_id, perk_claimed, last_claimed, next_reset_date, last_updated)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (row["member_id"], row["perk_id"], row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["last_updated"]))
-                else:
-                    if incoming_ts is None and existing_ts is None:
-                        log(f"[SYNC] Both timestamps are None for member_perk {row['member_id']},{row['perk_id']} (skipping update)")
-                    elif existing_ts is None or (incoming_ts is not None and incoming_ts > existing_ts):
-                        log(f"[SYNC] Updating member_perk {row['member_id']}, {row['perk_id']}")
-                        conn.execute('''
-                            UPDATE member_perks SET perk_claimed = ?, last_claimed = ?, next_reset_date = ?, last_updated = ?
-                            WHERE member_id = ? AND perk_id = ?
-                        ''', (row["perk_claimed"], row["last_claimed"], row["next_reset_date"], row["last_updated"], row["member_id"], row["perk_id"]))
-
-            # DELETED
-            for row in payload.get("deleted", []):
-                log(f"[SYNC] Deletion record {row['table_name']}:{row['record_id']}")
-                conn.execute('''
-                    INSERT OR REPLACE INTO deleted (table_name, record_id, deleted_at)
-                    VALUES (?, ?, ?)
-                ''', (row["table_name"], row["record_id"], row["deleted_at"]))
-
-            conn.commit()
-            log("[SYNC] Push complete")
-            return jsonify({'status': 'ok'})
-        except Exception as e:
-            conn.rollback()
-            log(f"[EXCEPTION]\n{str(e)}")
-            return jsonify({'status': 'error', 'msg': str(e)})
-        finally:
-            conn.close()
-
-def sync_with_peer():
-    peer_ip = "10.243.4.245"  # ZeroTier IP of KL Laptop
-    #peer_ip = "10.243.252.7"  # ZeroTier IP of Jake's Laptop
-    while True:
-        try:
-            r = requests.get(f'http://{peer_ip}:5000/sync/pull', timeout=5)
-            remote = r.json()
-            res = requests.post('http://127.0.0.1:5000/sync/push', json=remote, timeout=5)
-            if res.status_code != 200:
-                log(f"Push failed with status: {res.status_code}")
-        except Exception as e:
-            if ENABLE_SYNC_LOGS:
-                log(f'Sync failed: {e}')
-                sys.excepthook(*sys.exc_info())
-        time.sleep(60)
-
 if __name__ == '__main__':
-    ensure_column_exists()
-    threading.Thread(target=sync_with_peer, daemon=True).start()
     app.run(debug=True, host='0.0.0.0', port=5000)
