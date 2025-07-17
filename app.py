@@ -1,6 +1,6 @@
 # app.py
 
-from flask import Flask, request, jsonify, render_template, send_file, abort
+from flask import Flask, request, jsonify, render_template, send_file, abort, g
 from datetime import datetime, timedelta
 from flask_cors import CORS
 from collections import deque
@@ -68,17 +68,35 @@ def download_db():
         '''.format("Incorrect password." if pw else "")
     return send_file('tracking.db', as_attachment=True)
 
+@app.before_request
+def log_entry_latency():
+    import time
+    g.req_start = time.time()
+    log(f"[RECV] {request.method} {request.path}")
+    
+@app.after_request
+def after(response):
+    duration = time.time() - g.get("req_start", time.time())
+    if duration > 2:
+        log(f"[SLOW] {request.method} {request.path} took {duration:.2f}s")
+    return response
+
 def get_connection():
-    conn = sqlite3.connect(DB, timeout=30)
+    start = time.time()
+    conn = sqlite3.connect(DB, timeout=5, check_same_thread=False)
     try:
-        conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
+        conn.execute('PRAGMA busy_timeout = 3000;')  # 10 seconds
     except Exception as e:
         log('[HARDENED DB ERROR] Line 76: ' + str(e))
     try:
-        conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
+        conn.execute('PRAGMA journal_mode=DELETE;') # DB Logging
+        conn.execute('PRAGMA synchronous=NORMAL;')  # Faster, still crash-safe
     except Exception as e:
         log('[HARDENED DB ERROR] Line 80: ' + str(e))
     conn.row_factory = sqlite3.Row
+    delta = time.time() - start
+    if delta > 1.0:
+        log(f'[DB WARNING] Connection took {delta:.2f}s')
     return conn
 
 def should_reset_weekly(last_claimed):
@@ -130,7 +148,7 @@ def check_and_reset_member_perks(member_id):
         try:
             c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = ?', (member_id,))
         except Exception as e:
-            log('[HARDENED DB ERROR] Line 133: ' + str(e))
+            log('[HARDENED DB ERROR] Line 151: ' + str(e))
         member = c.fetchone()
         if not member:
             return
@@ -266,39 +284,39 @@ def create_or_edit_member():
             mid_row = c.fetchone()
             if mid_row:
                 mid = mid_row['member_id']
-                 try:
-                     c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id=?', (mid,))
-                 except Exception as e:
-                     log('[DB ERROR] Line 272: ' + str(e))
+                try:
+                    c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id=?', (mid,))
+                except Exception as e:
+                    log('[DB ERROR] Line 272: ' + str(e))
                 member = c.fetchone()
-                 try:
-                     c.execute('''
+                try:
+                    c.execute('''
                         SELECT mp.perk_id, p.reset_period FROM member_perks mp
                         JOIN perks p ON mp.perk_id = p.id
                         WHERE mp.member_id=?
                     ''', (mid,))
                 except Exception as e:
-                     log('[DB ERROR] Line 281: ' + str(e))
+                    log('[DB ERROR] Line 281: ' + str(e))
                 claimed_perks = c.fetchall()
                 for perk in claimed_perks:
                     next_reset = calculate_next_reset(perk['reset_period'], {
                         "sign_up_date": member["sign_up_date"],
                         "date_of_birth": member["date_of_birth"]
                     })
-                     try:
-                         c.execute('UPDATE member_perks SET next_reset_date=? WHERE member_id=? AND perk_id=?',
-                     except Exception as e:
-                         log('[DB ERROR] Line 291: ' + str(e))
-                              (next_reset, mid, perk['perk_id']))
+                    try:
+                        c.execute('UPDATE member_perks SET next_reset_date=? WHERE member_id=? AND perk_id=?',
+                            (next_reset, mid, perk['perk_id']))
+                    except Exception as e:
+                        log('[DB ERROR] Line 291: ' + str(e))
         else:
-             try:
-                 c.execute('INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location) VALUES (?, ?, ?, ?, ?, ?)', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
+            try:
+                c.execute('INSERT INTO members (member_id, name, tier_id, sign_up_date, date_of_birth, location) VALUES (?, ?, ?, ?, ?, ?)', (data['member_id'], data['name'], data['tier_id'], data['sign_up_date'], data['date_of_birth'], data['location']))
             except Exception as e:
-                 log('[DB ERROR] Line 297: ' + str(e))
-         try:
-             conn.commit()
-         except Exception as e:
-             log('[DB ERROR] Line 301: ' + str(e))
+                log('[DB ERROR] Line 297: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 301: ' + str(e))
         log(f'[POST] 200 /api/members')
         return ('OK', 200)
     finally:
@@ -363,21 +381,21 @@ def create_or_edit_tier():
         try:
             c = conn.cursor()
             if 'id' in data and data['id']:
-                 try:
-                     c.execute('UPDATE tiers SET name=?, color=? WHERE id=?',
-                 except Exception as e:
-                     log('[DB ERROR] Line 369: ' + str(e))
-                          (data['name'], data['color'], data['id']))
+                try:
+                    c.execute('UPDATE tiers SET name=?, color=? WHERE id=?',
+                        (data['name'], data['color'], data['id']))
+                except Exception as e:
+                    log('[DB ERROR] Line 369: ' + str(e))
             else:
-                 try:
-                     c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)',
-                 except Exception as e:
-                     log('[DB ERROR] Line 375: ' + str(e))
-                          (data['name'], data['color']))
-             try:
-                 conn.commit()
-             except Exception as e:
-                 log('[DB ERROR] Line 380: ' + str(e))
+                try:
+                    c.execute('INSERT INTO tiers (name, color) VALUES (?, ?)',
+                        (data['name'], data['color']))
+                except Exception as e:
+                    log('[DB ERROR] Line 375: ' + str(e))
+            try:
+                conn.commit()
+            except Exception as e:
+                log('[DB ERROR] Line 380: ' + str(e))
             log(f'[POST] 200 /api/tiers')
             return ('OK', 200)
         finally:
@@ -452,21 +470,21 @@ def create_or_edit_perk():
         try:
             c = conn.cursor()
             if 'id' in data and data['id']:
-                 try:
-                     c.execute('UPDATE perks SET name=?, reset_period=? WHERE id=?',
-                 except Exception as e:
-                     log('[DB ERROR] Line 458: ' + str(e))
-                          (data['name'], data['reset_period'], data['id']))
+                try:
+                    c.execute('UPDATE perks SET name=?, reset_period=? WHERE id=?',
+                        (data['name'], data['reset_period'], data['id']))
+                except Exception as e:
+                    log('[DB ERROR] Line 458: ' + str(e))
             else:
-                 try:
-                     c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
-                 except Exception as e:
-                     log('[DB ERROR] Line 464: ' + str(e))
-                          (data['name'], data['reset_period']))
-             try:
-                 conn.commit()
-             except Exception as e:
-                 log('[DB ERROR] Line 469: ' + str(e))
+                try:
+                    c.execute('INSERT INTO perks (name, reset_period) VALUES (?, ?)',
+                        (data['name'], data['reset_period']))
+                except Exception as e:
+                    log('[DB ERROR] Line 464: ' + str(e))
+            try:
+                conn.commit()
+            except Exception as e:
+                log('[DB ERROR] Line 469: ' + str(e))
             log(f'[POST] 200 /api/perks')
             return ('OK', 200)
         finally:
@@ -606,10 +624,10 @@ def get_member_perks(member_id):
         log(f'[GET] 200 /api/member_perks/{member_id}')
         return jsonify(perks)
     finally:
-         try:
-             conn.commit()
-         except Exception as e:
-             log('[DB ERROR] Line 612: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 612: ' + str(e))
         conn.close()
 
 @app.route('/api/member_perks/claim', methods=['POST'])
@@ -663,14 +681,19 @@ def reset_perk():
             DELETE FROM member_perks
             WHERE member_id = ? AND perk_id = ?
         ''', (data['member_id'], data['perk_id']))
-         try:
-             conn.commit()
-         except Exception as e:
-             log('[DB ERROR] Line 669: ' + str(e))
+        try:
+            conn.commit()
+        except Exception as e:
+            log('[DB ERROR] Line 669: ' + str(e))
         log(f'[POST] 200 /api/member_perks/reset')
         return ('OK', 200)
     finally:
         conn.close()
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    args = parser.parse_args()
+    app.run(debug=args.debug, host='0.0.0.0', port=5000)
+

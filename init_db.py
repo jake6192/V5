@@ -3,7 +3,7 @@
 import sqlite3
 conn = sqlite3.connect('tracking.db')
 conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
-conn.execute('PRAGMA journal_mode=WAL;') # DB Logging
+conn.execute('PRAGMA journal_mode=DELETE;') # DB Logging
 c = conn.cursor()
 
 # Drop existing tables for clean start (optional)
@@ -64,6 +64,9 @@ CREATE TABLE member_perks (
     FOREIGN KEY (perk_id) REFERENCES perks(id)
 )
 ''')
+
+# Index to speed up deletion/join queries
+c.execute('CREATE INDEX IF NOT EXISTS idx_tierperk_pair ON tier_perks(tier_id, perk_id);')
 
 conn.commit()
 conn.close()
