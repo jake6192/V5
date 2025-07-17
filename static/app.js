@@ -421,6 +421,14 @@ $(document).ready(function () {
 		});
 	}
   
+  $(document).ajaxStart(function () {
+    $("#loadingOverlay").fadeIn(200);
+  });
+
+  $(document).ajaxStop(function () {
+    $("#loadingOverlay").fadeOut(200);
+  });
+  
   // ========== AUTO-SYNC UI POLLING ==========
   // Poll every 60s for backend changes, refreshes only if modals are closed (so we don't interrupt edits)
   setInterval(function() {

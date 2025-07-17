@@ -130,6 +130,11 @@
     </div>
   </div>
 
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Waiting for server...</div>
+  </div>
+
   <script src="{{ url_for('static', filename='app.js') }}"></script>
   <script>
     let fetchLogs = () => {
