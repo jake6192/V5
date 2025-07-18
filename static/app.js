@@ -365,8 +365,8 @@ $(document).ready(function () {
 					html += `<div class="perk-meta">`;
 					if(claimed) {
 						html += `<div class="perk-dates">
-							<div><i>Claimed On:&nbsp;&nbsp;${formatDMY(p.last_claimed)}</i></div>
-							<div><i>Resets On:&nbsp;&nbsp;${formatDMY(p.next_reset_date||p.last_claimed.split(' ')[0].split('-').map((e,i)=>i==0?+e+1:e).join('-'))}</i></div> ${/* DO NOT (DELETE)/(CHANGE THE FUNCTIONALITY OF) THIS LINE */''}
+							<div><i>Claimed On:&nbsp;&nbsp;${new Date(p.last_claimed).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })||null}</i></div>
+							<div><i>Resets On:&nbsp;&nbsp;${new Date(p.next_reset_date||p.last_claimed.split(', ')[0].split('-').map((e,i)=>i==0?+e+1:e).join('-')).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' })||null}</i></div> ${/* DO NOT (DELETE)/(CHANGE THE FUNCTIONALITY OF) THIS LINE */''}
 						</div>`;
 						html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
 						html += `<span class="badge-claimed">Claimed</span>`;

@@ -1,13 +1,14 @@
 # app.py
 
 from flask import Flask, request, jsonify, render_template, send_file, abort, g
-from datetime import datetime, timedelta
+from datetime import datetime, time, date, timedelta
 from flask_cors import CORS
 from collections import deque
 from psycopg2.extras import RealDictCursor
 import subprocess
 import traceback
 import threading
+import datetime as dt
 import requests
 import psycopg2
 import logging
@@ -112,9 +113,9 @@ def should_reset_weekly(last_claimed):
     # last_claimed comes in as "YYYY-MM-DD hh:mm:ss"
     # parse full timestamp if present, else date‐only
     try:
-        last = datetime.strptime(last_claimed, "%Y-%m-%d %H:%M:%S")
+        last = last_claimed
     except ValueError:
-        last = datetime.strptime(last_claimed, "%Y-%m-%d")
+        last = last_claimed
     today = datetime.now()
     # compute this week's Monday at 00:00:00
     this_monday = (today - timedelta(days=today.weekday())).replace(hour=0,minute=0,second=0,microsecond=0)
@@ -123,9 +124,9 @@ def should_reset_weekly(last_claimed):
 def should_reset_monthly(last_claimed, sign_up_date):
     try:
         try:
-            claimed = datetime.strptime(last_claimed, "%Y-%m-%d %H:%M:%S")
+            claimed = last_claimed
         except ValueError:
-            claimed = datetime.strptime(last_claimed, "%Y-%m-%d")
+            claimed = last_claimed
         signup_day = int(sign_up_date.split('-')[2])
         today = datetime.now()
         # reset cutoff at signup_day 00:00:00
@@ -137,9 +138,9 @@ def should_reset_monthly(last_claimed, sign_up_date):
 def should_reset_yearly(last_claimed, dob):
     try:
         try:
-            claimed = datetime.strptime(last_claimed, "%Y-%m-%d %H:%M:%S")
+            claimed = last_claimed
         except ValueError:
-            claimed = datetime.strptime(last_claimed, "%Y-%m-%d")
+            claimed = last_claimed
         dob_month, dob_day = int(dob.split('-')[1]), int(dob.split('-')[2])
         today = datetime.now()
         # reset cutoff at birthday 00:00:00 this year
@@ -152,8 +153,6 @@ def check_and_reset_member_perks(member_id):
     conn = get_connection()
     try:
         c = conn.cursor()
-        today = datetime.now().strftime("%Y-%m-%d")
-
         try:
             c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = %s', (member_id,))
         except Exception as e:
@@ -161,7 +160,6 @@ def check_and_reset_member_perks(member_id):
         member = c.fetchone()
         if not member:
             return
-
         try:
             c.execute('''
                 SELECT mp.member_id, mp.perk_id, mp.last_claimed, p.reset_period
@@ -176,7 +174,6 @@ def check_and_reset_member_perks(member_id):
         for row in rows:
             if not row['last_claimed']:
                 continue
-
             reset = False
             if row['reset_period'] == 'Weekly':
                 reset = should_reset_weekly(row['last_claimed'])
@@ -184,7 +181,6 @@ def check_and_reset_member_perks(member_id):
                 reset = should_reset_monthly(row['last_claimed'], member['sign_up_date'])
             elif row['reset_period'] == 'Yearly':
                 reset = should_reset_yearly(row['last_claimed'], member['date_of_birth'])
-
             if reset:
                 try:
                     c.execute('''
@@ -207,10 +203,21 @@ def calculate_next_reset(reset_period, member):
         days_until_monday = (7 - today.weekday()) % 7
         if days_until_monday == 0:
             days_until_monday = 7
-        return (today + timedelta(days=days_until_monday)).strftime("%Y-%m-%d")
+        return (today + timedelta(days=days_until_monday))
     elif reset_period == "Monthly":
         try:
-            signup_day = int(member["sign_up_date"].split("-")[2])
+            sign_up_date = member["sign_up_date"]
+            if isinstance(sign_up_date, str):
+                try:
+                    sign_up_date = datetime.strptime(sign_up_date, "%Y-%m-%d")
+                except Exception as e:
+                    log(f"[calculate_next_reset()] Failed to parse sign_up_date string: {sign_up_date} | {str(e)}")
+                    return None
+            try:
+                signup_day = sign_up_date.day
+            except Exception as e:
+                log(f"[calculate_next_reset()] Failed to parse sign_up_date string to extract day into signup_day: {sign_up_date} | {str(e)}")
+                return None
             this_month_reset = today.replace(day=signup_day)
             if today.day < signup_day:
                 next_reset = this_month_reset
@@ -222,17 +229,35 @@ def calculate_next_reset(reset_period, member):
                 last_day = calendar.monthrange(year, month)[1]
                 day = min(signup_day, last_day)
                 next_reset = today.replace(year=year, month=month, day=day)
-            return next_reset.strftime("%Y-%m-%d")
+            return next_reset
         except:
+            log(f"[calculate_next_reset()] [Line 256] Error")
             return None
     elif reset_period == "Yearly":
         try:
-            dob = datetime.strptime(member["date_of_birth"], "%Y-%m-%d")
-            next_reset = dob.replace(year=today.year)
-            if next_reset < today:
-                next_reset = next_reset.replace(year=today.year + 1)
-            return next_reset.strftime("%Y-%m-%d")
+            today = dt.datetime.today()
+            dob = member["date_of_birth"]
+            if dob:
+                if isinstance(dob, str):
+                    try:
+                        dob = datetime.strptime(dob, "%Y-%m-%d")
+                    except Exception as e:
+                        log(f"[calculate_next_reset()] Failed to parse dob string: {dob} | {str(e)}")
+                        return None
+                try:
+                    next_reset = dob.replace(year=today.year)
+                except ValueError:
+                    log(f"[calculate_next_reset()] [Line 250] ValueError(leap year)")
+                    next_reset = dob.replace(month=2, day=28, year=today.year)
+                except Exception as e:
+                    log(f"[calculate_next_reset()] [EXCEPTION] {str(e)}")
+                if next_reset < today:
+                    next_reset = next_reset.replace(year=today.year + 1)
+            else:
+                next_reset = today.replace(year=today.year + 1)
+            return next_reset
         except:
+            log(f"[calculate_next_reset()] Error")
             return None
     return None
 
@@ -643,7 +668,7 @@ def get_member_perks(member_id):
 def claim_perk():
     data = request.json
     now_dt = datetime.now()
-    now = now_dt.strftime("%Y-%m-%d %H:%M:%S")
+    now = now_dt
     with db_lock:
         conn = get_connection()
         try:
