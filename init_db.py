@@ -70,8 +70,6 @@ CREATE TABLE member_perks (
 )
 """)
 
-
-# missing 'venue TEXT NOT NULL,' when added back into functionality.
 c.execute("""
     CREATE TABLE IF NOT EXISTS shifts (
     id SERIAL PRIMARY KEY,
@@ -79,6 +77,7 @@ c.execute("""
     date DATE NOT NULL,
     start TIME NOT NULL,
     "end" TIME NOT NULL,
+    venue TEXT NOT NULL DEFAULT 'Kings Langley',
     notes TEXT,
     hours NUMERIC(5,2) NOT NULL
 );

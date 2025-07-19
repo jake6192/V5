@@ -138,7 +138,7 @@ def get_shifts():
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT id, staff, date, start, "end", notes, hours FROM shifts ORDER BY date DESC')
+        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC')
         rows = cur.fetchall()
         result = []
         for r in rows:
@@ -148,6 +148,7 @@ def get_shifts():
                 "date": r["date"].isoformat() if r["date"] else "",
                 "start": str(r["start"]) if r["start"] else "",
                 "end": str(r["end"]) if r["end"] else "",
+                "venue": str(r["venue"]) if r["venue"] else "",
                 "notes": r["notes"] or "",
                 "hours": float(r["hours"]) if r["hours"] is not None else 0.0
             })
@@ -162,9 +163,9 @@ def add_shift():
     conn = get_connection()
     cur = conn.cursor()
     cur.execute('''
-        INSERT INTO shifts (staff, date, start, "end", notes, hours)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    ''', (data["staff"], data["date"], data["start"], data["end"], data.get("notes", ""), data["hours"]))
+        INSERT INTO shifts (staff, date, start, "end", venue, notes, hours)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ''', (data["staff"], data["date"], data["start"], data["end"], data["venue"], data.get("notes", ""), data["hours"]))
     conn.commit()
     return jsonify({"status": "ok"})
     
@@ -194,13 +195,14 @@ def cumulative():
         staff = request.args.get("staff")
         start = request.args.get("start")
         end = request.args.get("end")
+        venue = request.args.get("venue")
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute('''
             SELECT SUM(hours) as total
             FROM shifts
-            WHERE staff = %s AND date >= %s AND date <= %s
-        ''', (staff, start, end))
+            WHERE staff = %s AND date >= %s AND date <= %s AND venue = %s
+        ''', (staff, start, end, venue))
         result = cur.fetchone()
         return jsonify(result)
     except Exception as e:

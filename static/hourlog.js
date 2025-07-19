@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const dateInput = document.getElementById("date");
   const startTimeInput = document.getElementById("startTime");
   const endTimeInput = document.getElementById("endTime");
-  //const venueSelect = document.getElementById("venue");
+  const venueSelect = document.getElementById("venueSelect");
   const notesInput = document.getElementById("notes");
   const logShiftBtn = document.getElementById("logShift");
 
@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const quickButtons = document.querySelectorAll(".quick-buttons button");
 
   const filterStaff = document.getElementById("filterStaff");
-  //const filterVenue = document.getElementById("filterVenue");
+  const filterVenue = document.getElementById("filterVenue");
 
   const cumulativeStaff = document.getElementById("cumulativeStaff");
   const startRange = document.getElementById("startRange");
@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === Live filtering hooks ===
   filterStaff.addEventListener("change", renderTable);
-  //filterVenue.addEventListener("change", renderTable);
+  filterVenue.addEventListener("change", renderTable);
   rangeStart.addEventListener("input", renderTable);
   rangeEnd.addEventListener("input", renderTable);
   
@@ -151,10 +151,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderTable() {
     const staffVal = filterStaff.value;
-	  //const venueVal = filterVenue.value;
+	  const venueVal = filterVenue.value;
     const filtered = allShifts.filter(s =>
-      //(staffVal === "All" || s.staff === staffVal) && (venueVal === "All" || s.venue === venueVal) &&
-      (staffVal === "All" || s.staff === staffVal) &&
+      (staffVal === "All" || s.staff === staffVal) && (venueVal === "All" || s.venue === venueVal) &&
       isWithinDateRange(s.date)
     );
 
@@ -181,6 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${formatDate(s.date)}</td>
         <td>${s.start}</td>
         <td>${s.end}</td>
+        <td>${s.venue}</td>
         <td>${s.hours}</td>
         <td>${s.notes || ""}</td>
         <td><button onclick="deleteShift(${s.id})">🗑</button></td>`;
@@ -192,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateFilterOptions() {
     const uniqueStaff = [...new Set(allShifts.map(s => s.staff))];
-    //const uniqueVenues = [...new Set(shifts.map(s => s.venue))];
+    const uniqueVenues = [...new Set(allShifts.map(s => s.venue))];
     [filterStaff, cumulativeStaff].forEach(select => {
       const current = select.value;
       select.innerHTML = `<option value="All">All</option>`;
@@ -203,12 +203,12 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       if (current) select.value = current;
     });
-    /*filterVenue.innerHTML = `<option value="All">All</option>`;
+    filterVenue.innerHTML = `<option value="All">All</option>`;
 	  uniqueVenues.forEach(v => {
-		const opt = document.createElement("option");
-		opt.value = opt.textContent = v;
-		filterVenue.appendChild(opt);
-	  });*/
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = v;
+      filterVenue.appendChild(opt);
+	  });
   }
 
   logShiftBtn.addEventListener("click", () => {
@@ -217,10 +217,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const date = dateInput.value;
     const start = startTimeInput.value;
     const end = endTimeInput.value;
-    //const venue = venueSelect.value;
+    const venue = venueSelect.value;
     const notes = notesInput.value;
-    //if (!staff || !date || !start || !end || !venue) {
-    if (!staff || !date || !start || !end) {
+    if (!staff || !date || !start || !end || !venue) {
       alert("Please fill in all required fields.");
       return;
     }
@@ -229,9 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("End time must be after start time.");
       return;
     }
-    //postShift({ staff, date, start, end, venue, notes, hours });
-    postShift({ staff, date, start, end, notes, hours });
-    showToast("✅ Shift logged successfully");
+    postShift({ staff, date, start, end, venue, notes, hours });
   });
 
   calculateBtn.addEventListener("click", async () => {
@@ -251,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".sortable").forEach(th => {
     const colMap = {
       sortStaff: "staff",
-      //sortVenue: "venue",
+      sortVenue: "venue",
       sortHours: "hours"
     };
     const col = colMap[th.id];
@@ -314,11 +311,9 @@ document.addEventListener("DOMContentLoaded", () => {
   printBtn.addEventListener("click", () => window.print());
 
   exportCSVBtn.addEventListener("click", () => {
-    //const rows = [["Staff", "Date", "Start", "End", "Venue", "Hours", "Notes"]];
-    const rows = [["Staff", "Date", "Start", "End", "Hours", "Notes"]];
+    const rows = [["Staff", "Date", "Start", "End", "Venue", "Hours", "Notes"]];
     allShifts.forEach(s => {
-      //rows.push([s.staff, s.date, s.start, s.end, s.venue, s.hours, s.notes || ""]);
-      rows.push([s.staff, s.date, s.start, s.end, s.hours, s.notes || ""]);
+      rows.push([s.staff, s.date, s.start, s.end, s.venue, s.hours, s.notes || ""]);
     });
     const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });

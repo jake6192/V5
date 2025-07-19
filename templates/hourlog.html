@@ -39,6 +39,13 @@
         <option>Justin</option>
         <option>Matt</option>
       </select>
+      
+      <label for="venueSelect">Select Venue:</label>
+      <select id="venueSelect">
+        <option disabled>Choose a venue</option>
+        <option selected>Kings Langley</option>
+        <option disabled>Berkhamsted</option>
+      </select>
 
       <label for="notes">Notes (optional):</label>
       <input type="text" id="notes" />
@@ -108,9 +115,9 @@
         <label>Filter by Staff Member:
           <select id="filterStaff"><option value="All">All</option></select>
         </label>
-        <!-- <label>Filter by Venue:
+        <label>Filter by Venue:
           <select id="filterVenue"><option value="All">All</option></select>
-        </label> -->
+        </label>
         <div class="actions">
           <button id="clearLogs">❌ Delete All Logs</button>
           <button id="printTable">🖨️ Print</button>
@@ -126,7 +133,7 @@
             <th>Date</th>
             <th>Start</th>
             <th>End</th>
-            <!-- <th id="sortVenue" class="sortable">Venue</th> -->
+            <th id="sortVenue" class="sortable">Venue</th>
             <th id="sortHours" class="sortable">Hours</th>
             <th>Notes</th>
             <th>Delete</th>
