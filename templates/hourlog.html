@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-  <title>Staff Hour Log</title>
+  <title>Staff Hours Log</title>
   <link rel="stylesheet" href="/static/hourlog.css"
 </head>
 <body>
@@ -31,7 +31,7 @@
     <div class="form-left">
       <label for="staffSelect">Select Staff:</label>
       <select id="staffSelect">
-        <option disabled selected>Choose a staff member</option>
+        <option disabled selected value="null">Choose a staff member</option>
         <option>Ollie</option>
         <option>Callum</option>
         <option>Sam</option>
@@ -42,7 +42,7 @@
       
       <label for="venueSelect">Select Venue:</label>
       <select id="venueSelect">
-        <option disabled>Choose a venue</option>
+        <option disabled value="null">Choose a venue</option>
         <option selected>Kings Langley</option>
         <option disabled>Berkhamsted</option>
       </select>

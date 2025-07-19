@@ -212,7 +212,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   logShiftBtn.addEventListener("click", () => {
-    showOverlay();
     const staff = staffSelect.value;
     const date = dateInput.value;
     const start = startTimeInput.value;
@@ -223,11 +222,20 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Please fill in all required fields.");
       return;
     }
+    if(staff == "null") {
+      alert("Select a staff member.");
+      return;
+    }
+    if(venue == "null") {
+      alert("Select a venue.");
+      return;
+    }
     const hours = calculateHours(start, end);
     if (hours <= 0) {
       alert("End time must be after start time.");
       return;
     }
+    showOverlay();
     postShift({ staff, date, start, end, venue, notes, hours });
   });
 
