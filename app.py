@@ -83,6 +83,26 @@ try:
         subprocess.run(['python3', 'init_db.py'])
 except Exception as e:
     log(f"[INIT CHECK ERROR] {str(e)}")
+    
+###################################
+# Routes for loading html content #
+###################################
+
+@app.route("/")
+def root_redirect():
+    return render_template("hub.html")  # Loads new Hub UI
+
+@app.route("/member-tracking")
+def member_tracking():
+    return render_template("index.html")  # Loads existing app with no change
+
+@app.route("/hourlog")
+def hourlog():
+    return render_template("hourlog.html")  # Placeholder page
+
+#####################
+# Developer routes. #
+#####################
 
 @app.route('/logs')
 def get_logs():
@@ -108,6 +128,90 @@ def download_db():
             {}</div>
         '''.format("Incorrect password." if pw else "")
     return send_file('tracking.db', as_attachment=True)
+
+###########################
+# Staff Shift Log Routes. #
+###########################
+
+@app.route('/api/shifts')
+def get_shifts():
+    try:
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC')
+        rows = cur.fetchall()
+        result = []
+        for r in rows:
+            result.append({
+                "id": r["id"],
+                "staff": r["staff"],
+                "date": r["date"].isoformat() if r["date"] else "",
+                "start": str(r["start"]) if r["start"] else "",
+                "end": str(r["end"]) if r["end"] else "",
+                "venue": str(r["venue"]) if r["venue"] else "",
+                "notes": r["notes"] or "",
+                "hours": float(r["hours"]) if r["hours"] is not None else 0.0
+            })
+        return jsonify(result)
+    except Exception as e:
+        log(f"[GET /api/shifts ERROR] {repr(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/shifts", methods=["POST"])
+def add_shift():
+    data = request.json
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        INSERT INTO shifts (staff, date, start, "end", venue, notes, hours)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    ''', (data["staff"], data["date"], data["start"], data["end"], data["venue"], data.get("notes", ""), data["hours"]))
+    conn.commit()
+    return jsonify({"status": "ok"})
+    
+@app.route('/api/shifts', methods=["DELETE"])
+def clear_shifts():
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM shifts")
+        conn.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        log(f"[DELETE /api/shifts ERROR] {repr(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/shifts/<int:shift_id>", methods=["DELETE"])
+def delete_shift(shift_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM shifts WHERE id = %s", (shift_id,))
+    conn.commit()
+    return jsonify({"status": "deleted"})
+
+@app.route('/api/shifts/cumulative')
+def cumulative():
+    try:
+        staff = request.args.get("staff")
+        start = request.args.get("start")
+        end = request.args.get("end")
+        venue = request.args.get("venue")
+        conn = get_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('''
+            SELECT SUM(hours) as total
+            FROM shifts
+            WHERE staff = %s AND date >= %s AND date <= %s AND venue = %s
+        ''', (staff, start, end, venue))
+        result = cur.fetchone()
+        return jsonify(result)
+    except Exception as e:
+        log(f"[GET /api/shifts/cumulative ERROR] {repr(e)}")
+        return jsonify({"error": str(e)}), 500
+
+####################
+# Perk reset logic #
+####################
 
 def should_reset_weekly(last_claimed):
     # last_claimed comes in as "YYYY-MM-DD hh:mm:ss"
@@ -261,9 +365,6 @@ def calculate_next_reset(reset_period, member):
             return None
     return None
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 # MEMBER ROUTES
 @app.route('/api/members', methods=['GET'])

@@ -70,6 +70,19 @@ CREATE TABLE member_perks (
 )
 """)
 
+c.execute("""
+    CREATE TABLE IF NOT EXISTS shifts (
+    id SERIAL PRIMARY KEY,
+    staff TEXT NOT NULL,
+    date DATE NOT NULL,
+    start TIME NOT NULL,
+    "end" TIME NOT NULL,
+    venue TEXT NOT NULL DEFAULT 'Kings Langley',
+    notes TEXT,
+    hours NUMERIC(5,2) NOT NULL
+);
+""")
+
 # Index for faster lookup in tier_perks
 c.execute("""
 CREATE INDEX IF NOT EXISTS idx_tierperk_pair ON tier_perks(tier_id, perk_id)

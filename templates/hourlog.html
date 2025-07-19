@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <title>Staff Hours Log</title>
+  <link rel="stylesheet" href="/static/hourlog.css"
+</head>
+<body>
+  <div class="theme-toggle">
+	<label for="darkModeToggle" class="theme-label">Toggle Dark Mode</label>
+	<label class="switch">
+	  <input type="checkbox" id="darkModeToggle" />
+	  <span class="slider"></span>
+	</label>
+  </div>
+
+  <div id="pinModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h2>Enter PIN to View Logged Data</h2>
+      <input type="password" id="pinInput" maxlength="4" />
+      <button id="submitPin">Unlock</button>
+      <p id="pinError"></p>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Staff Hour Log</h1>
+
+  <div class="input-section">
+    <div class="form-left">
+      <label for="staffSelect">Select Staff:</label>
+      <select id="staffSelect">
+        <option disabled selected value="null">Choose a staff member</option>
+        <option>Ollie</option>
+        <option>Callum</option>
+        <option>Sam</option>
+        <option>Jake</option>
+        <option>Justin</option>
+        <option>Matt</option>
+      </select>
+      
+      <label for="venueSelect">Select Venue:</label>
+      <select id="venueSelect">
+        <option disabled value="null">Choose a venue</option>
+        <option selected>Kings Langley</option>
+        <option disabled>Berkhamsted</option>
+      </select>
+
+      <label for="notes">Notes (optional):</label>
+      <input type="text" id="notes" />
+
+      <button id="logShift">Submit Shift</button>
+    </div>
+
+    <div class="form-right">
+      <div class="time-range-horizontal">
+        <div class="time-block">
+          <h4>Start Time</h4>
+          <div class="time-controls-row">
+            <button class="time-btn" data-type="start" data-op="down">–</button>
+            <div class="time-editable" data-type="start">
+              <span id="startTimeDisplay" class="time-display">--:--</span>
+              <input type="time" id="startTimeInput" class="time-input" style="display: none;" />
+            </div>
+            <button class="time-btn" data-type="start" data-op="up">+</button>
+          </div>
+        </div>
+
+        <div class="time-block">
+          <h4>End Time</h4>
+          <div class="time-controls-row">
+            <button class="time-btn" data-type="end" data-op="down">–</button>
+            <div class="time-editable" data-type="end">
+              <span id="endTimeDisplay" class="time-display">--:--</span>
+              <input type="time" id="endTimeInput" class="time-input" style="display: none;" />
+            </div>
+            <button class="time-btn" data-type="end" data-op="up">+</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="calendar">
+        <div class="calendar-header">
+          <button id="prevMonth">&lt;</button>
+          <span id="calendarMonth"></span>
+          <button id="nextMonth">&gt;</button>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Hidden inputs now safely in DOM -->
+  <input type="hidden" id="date" />
+  <input type="hidden" id="startTime" />
+  <input type="hidden" id="endTime" />
+
+
+    <div id="dataSection" style="display: none;">
+	  <div class="date-range">
+		<label>From: <input type="date" id="rangeStart" /></label>
+		<label>To: <input type="date" id="rangeEnd" /></label>
+		<div class="quick-buttons">
+		  <button data-range="today">Today</button>
+		  <button data-range="24h">Past 24h</button>
+		  <button data-range="7d">Past 7 Days</button>
+		  <button data-range="1m">Past Month</button>
+		  <button data-range="1y">Past Year</button>
+		  <button data-range="all">All Time</button>
+		</div>
+	  </div>
+      
+	  <div class="filters">
+        <label>Filter by Staff Member:
+          <select id="filterStaff"><option value="All">All</option></select>
+        </label>
+        <label>Filter by Venue:
+          <select id="filterVenue"><option value="All">All</option></select>
+        </label>
+        <div class="actions">
+          <button id="clearLogs">❌ Delete All Logs</button>
+          <button id="printTable">🖨️ Print</button>
+          <button id="exportCSV">📁 Export CSV</button>
+        </div>
+      </div>
+
+      <h2>Logged Shifts</h2>
+      <table id="logTable">
+        <thead>
+          <tr>
+            <th id="sortStaff" class="sortable">Staff</th>
+            <th>Date</th>
+            <th>Start</th>
+            <th>End</th>
+            <th id="sortVenue" class="sortable">Venue</th>
+            <th id="sortHours" class="sortable">Hours</th>
+            <th>Notes</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <p id="totalHours">Total Hours: 0</p>
+
+      <div class="cumulative">
+        <h3>Cumulative Hours Lookup</h3>
+        <label for="cumulativeStaff">Staff:</label>
+        <select id="cumulativeStaff"><option disabled selected>Select Staff</option></select>
+        <label>Start Date: <input type="date" id="startRange"></label>
+        <label>End Date: <input type="date" id="endRange"></label>
+        <button id="calculateHours">Calculate</button>
+        <p id="cumulativeResult"></p>
+      </div>
+    </div>
+	<button id="triggerPin" class="primary-button">View Staff Hours</button>
+  </div>
+
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Waiting for server...</div>
+  </div>
+
+  <script defer src="/static/hourlog.js"></script>
+</body>
+</html>
