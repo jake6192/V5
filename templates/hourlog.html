@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Staff Hour Log</title>
-  <link rel="icon" href="favicon.ico" />
   <link rel="stylesheet" href="/static/hourlog.css"
 </head>
 <body>
@@ -112,6 +112,7 @@
           <select id="filterVenue"><option value="All">All</option></select>
         </label> -->
         <div class="actions">
+          <button id="clearLogs">❌ Delete All Logs</button>
           <button id="printTable">🖨️ Print</button>
           <button id="exportCSV">📁 Export CSV</button>
         </div>
@@ -147,6 +148,11 @@
       </div>
     </div>
 	<button id="triggerPin" class="primary-button">View Staff Hours</button>
+  </div>
+
+  <div id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Waiting for server...</div>
   </div>
 
   <script defer src="/static/hourlog.js"></script>
