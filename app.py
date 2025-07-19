@@ -83,6 +83,26 @@ try:
         subprocess.run(['python3', 'init_db.py'])
 except Exception as e:
     log(f"[INIT CHECK ERROR] {str(e)}")
+    
+###################################
+# Routes for loading html content #
+###################################
+
+@app.route("/")
+def root_redirect():
+    return render_template("hub.html")  # Loads new Hub UI
+
+@app.route("/member-tracking")
+def member_tracking():
+    return render_template("index.html")  # Loads existing app with no change
+
+@app.route("/hourlog")
+def hourlog():
+    return render_template("hourlog.html")  # Placeholder page
+
+#####################
+# Developer routes. #
+#####################
 
 @app.route('/logs')
 def get_logs():
@@ -108,6 +128,60 @@ def download_db():
             {}</div>
         '''.format("Incorrect password." if pw else "")
     return send_file('tracking.db', as_attachment=True)
+
+###########################
+# Staff Shift Log Routes. #
+###########################
+
+@app.route("/api/shifts", methods=["GET"])
+def get_shifts():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT id, staff, date, start, end, notes, hours FROM shifts ORDER BY date DESC")
+    rows = cur.fetchall()
+    return jsonify([
+        {"id": r[0], "staff": r[1], "date": r[2].isoformat(),
+         "start": str(r[3]), "end": str(r[4]),
+         "notes": r[5], "hours": float(r[6])} for r in rows
+    ])
+
+@app.route("/api/shifts", methods=["POST"])
+def add_shift():
+    data = request.json
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO shifts (staff, date, start, end, notes, hours)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (data["staff"], data["date"], data["start"], data["end"], data.get("notes", ""), data["hours"]))
+    conn.commit()
+    return jsonify({"status": "ok"})
+
+@app.route("/api/shifts/<int:shift_id>", methods=["DELETE"])
+def delete_shift(shift_id):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM shifts WHERE id = %s", (shift_id,))
+    conn.commit()
+    return jsonify({"status": "deleted"})
+
+@app.route("/api/shifts/cumulative", methods=["GET"])
+def cumulative_hours():
+    staff = request.args.get("staff")
+    start = request.args.get("start")
+    end = request.args.get("end")
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT SUM(hours) FROM shifts
+        WHERE staff = %s AND date BETWEEN %s AND %s
+    """, (staff, start, end))
+    total = cur.fetchone()[0] or 0.0
+    return jsonify({"staff": staff, "hours": float(total)})
+
+####################
+# Perk reset logic #
+####################
 
 def should_reset_weekly(last_claimed):
     # last_claimed comes in as "YYYY-MM-DD hh:mm:ss"
@@ -261,9 +335,6 @@ def calculate_next_reset(reset_period, member):
             return None
     return None
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 # MEMBER ROUTES
 @app.route('/api/members', methods=['GET'])
