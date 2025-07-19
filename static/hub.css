@@ -1,0 +1,81 @@
+body {
+  background-color: #0d0d0d;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', sans-serif;
+  padding: 0 2rem 2rem;
+  position: relative;
+  margin-top: 0;
+}
+.hub-container {
+  max-width: 800px;
+  margin: auto;
+  text-align: center;
+}
+.iframe-container {
+  --scale-factor: 0.8;
+  overflow: hidden;
+  width: 100%;
+  height: 100vh;
+  border: 1px groove #555;
+  margin-top: 2rem;
+  border-radius: 15px;
+}
+iframe {
+  transform: scale(var(--scale-factor));
+  width: calc(1/var(--scale-factor) * 100%);
+  height: calc(1/var(--scale-factor) * 100%);
+  transform-origin: 0 0;
+}
+h1 {
+  font-size: 2.5rem;
+  margin: 2rem auto;
+  letter-spacing: 1px;
+}
+.hub-button {
+  display: block;
+  margin: 1rem auto;
+  padding: 1.2rem 2rem;
+  font-size: 1.25rem;
+  background: #1a1a1a;
+  color: #fff;
+  border: 2px solid #333;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: background 0.3s, transform 0.2s;
+}
+.hub-button:hover {
+  background: #333;
+  transform: scale(1.02);
+}
+.blob-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -2;
+  pointer-events: none;
+  overflow: hidden;
+}
+/* Minimal blob style */
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.15;
+  will-change: top, left, width, height, filter;
+}
+/* Colors (same palette) */
+.blob.green { background: #089279; }
+.blob.cream    { background: #f7fdb5; }
+@keyframes pulseBlob {
+  0%, 100% {
+    width: 80px;
+    height: 80px;
+    filter: blur(40px);
+  }
+  50% {
+    width: 150px;
+    height: 150px;
+    filter: blur(75px);
+  }
+}

@@ -2,51 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Simtec Hub</title>
-  <link rel="stylesheet" href="/static/style.css" />
-  <script defer src="/static/hub.js"></script>
-  <style>
-    body {
-      background-color: #0d0d0d;
-      color: #e0e0e0;
-      font-family: 'Segoe UI', sans-serif;
-      padding: 2rem;
-    }
-    .hub-container {
-      max-width: 800px;
-      margin: auto;
-      text-align: center;
-    }
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 2rem;
-      letter-spacing: 1px;
-    }
-    .hub-button {
-      display: block;
-      margin: 1rem auto;
-      padding: 1.2rem 2rem;
-      font-size: 1.25rem;
-      background: #1a1a1a;
-      color: #fff;
-      border: 2px solid #333;
-      border-radius: 10px;
-      text-decoration: none;
-      transition: background 0.3s, transform 0.2s;
-    }
-    .hub-button:hover {
-      background: #333;
-      transform: scale(1.02);
-    }
-  </style>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <title>Simtec Apps Hub</title>
+  <link rel="stylesheet" href="/static/hub.css" />
 </head>
 <body>
   <div class="hub-container">
-    <h1>🧠 Simtec Admin Hub</h1>
-    <a href="/member-tracking" class="hub-button">🧑‍💼 Manage Members</a>
-    <a href="/hourlog" class="hub-button">⏱ Staff Hour Logger</a>
+    <h1>Simtec Staff Tools</h1>
+    <a href="/member-tracking" class="hub-button">🧑‍💼 Claim Member Perks</a>
+    <a href="/hourlog" class="hub-button">⏱ Staff Hours Log</a>
     <!-- <a href="#" class="hub-button" style="opacity: 0.5; pointer-events: none;">📊 Reports (Coming Soon)</a> -->
     <!-- <a href="#" class="hub-button" style="opacity: 0.5; pointer-events: none;">⚙️ Settings (Coming Soon)</a> -->
   </div>
+  
+  <div class="iframe-container">
+  </div>
+
+  <div class="blob-container">
+    <div class="blob cream"></div>
+    <div class="blob green"></div>
+    <div class="blob cream"></div>
+    <div class="blob green"></div>
+    <div class="blob cream"></div>
+    <div class="blob green"></div>
+    <div class="blob cream"></div>
+    <div class="blob green"></div>
+  </div>
+
+  <script defer src="/static/hub.js"></script>
 </body>
 </html>
