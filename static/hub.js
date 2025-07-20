@@ -18,7 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const width = baseSize;
     const height = baseSize;
     const x = Math.random() * (window.innerWidth - width);
-    const y = Math.random() * (window.innerHeight - height);
+    const y = Math.random() * (window.innerHeight/1.75 - height);
 
     // Initial velocity: 1–6 px/sec (converted to px/frame)
     const speed = (Math.random() * 2.5 + 0.5);
@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         b.x = Math.max(0, Math.min(window.innerWidth - b.width, b.x));
       }
 
-      if (b.y <= 0 || b.y + b.height >= window.innerHeight) {
+      if (b.y <= 0 || b.y + b.height >= window.innerHeight/1.75) {
         b.vy *= -1;
         b.y = Math.max(0, Math.min(window.innerHeight - b.height, b.y));
       }

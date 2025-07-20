@@ -7,9 +7,11 @@ body {
   margin-top: 0;
 }
 .hub-container {
-  max-width: 800px;
+  max-width: 75%;
   margin: auto;
   text-align: center;
+  display: flex;
+  flex-wrap: wrap;
 }
 .iframe-container {
   --scale-factor: 0.8;
@@ -30,6 +32,7 @@ h1 {
   font-size: 2.5rem;
   margin: 2rem auto;
   letter-spacing: 1px;
+  text-align: center;
 }
 .hub-button {
   display: block;
@@ -42,6 +45,9 @@ h1 {
   border-radius: 10px;
   text-decoration: none;
   transition: background 0.3s, transform 0.2s;
+  width: 60%;
+  flex-basis: 50%;
+  flex: 0 40%;
 }
 .hub-button:hover {
   background: #333;
@@ -65,7 +71,7 @@ h1 {
   will-change: top, left, width, height, filter;
 }
 /* Colors (same palette) */
-.blob.green { background: #089279; }
+.blob.green { background: #04a98c; }
 .blob.cream    { background: #f7fdb5; }
 @keyframes pulseBlob {
   0%, 100% {
