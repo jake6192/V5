@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Staff Hours Log</title>
-  <link rel="stylesheet" href="/static/hourlog.css"
+  <link rel="stylesheet" href="{{ url_for('static', filename='hourlog.css') }}?v=1.0.7">
 </head>
 <body>
   <div class="theme-toggle">
@@ -162,6 +162,6 @@
     <div class="loading-text">Waiting for server...</div>
   </div>
 
-  <script defer src="/static/hourlog.js"></script>
+  <script src="{{ url_for('static', filename='hourlog.js') }}?v=1.0.7"></script>
 </body>
 </html>

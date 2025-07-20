@@ -63,9 +63,9 @@ c.execute("""
 CREATE TABLE member_perks (
     member_id INTEGER REFERENCES members(id),
     perk_id INTEGER REFERENCES perks(id),
-    claimed INTEGER,
     last_claimed TEXT,
     next_reset_date TEXT,
+    multiplier INTEGER DEFAULT 1,
     PRIMARY KEY (member_id, perk_id)
 )
 """)

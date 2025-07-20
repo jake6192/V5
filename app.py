@@ -53,6 +53,13 @@ def after(response):
         log(f"[SLOW] {request.method} {request.path} took {duration:.2f}s")
     return response
 
+@app.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 def get_connection():
     start = time.time()
     try:
@@ -138,7 +145,7 @@ def get_shifts():
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC')
+        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC, start DESC, "end" DESC')
         rows = cur.fetchall()
         result = []
         for r in rows:
@@ -303,39 +310,39 @@ def check_and_reset_member_perks(member_id):
 # --- calculate next reset date when claiming
 def calculate_next_reset(reset_period, member):
     today = datetime.today()
+    multiplier = member.get("multiplier", 1) or 1
     if reset_period == "Weekly":
         days_until_monday = (7 - today.weekday()) % 7
         if days_until_monday == 0:
             days_until_monday = 7
-        return (today + timedelta(days=days_until_monday))
+        return today + timedelta(days=days_until_monday + 7 * (multiplier - 1))
     elif reset_period == "Monthly":
         try:
-            sign_up_date = member["sign_up_date"]
-            if isinstance(sign_up_date, str):
-                try:
-                    sign_up_date = datetime.strptime(sign_up_date, "%Y-%m-%d")
-                except Exception as e:
-                    log(f"[calculate_next_reset()] Failed to parse sign_up_date string: {sign_up_date} | {str(e)}")
-                    return None
-            try:
-                signup_day = sign_up_date.day
-            except Exception as e:
-                log(f"[calculate_next_reset()] Failed to parse sign_up_date string to extract day into signup_day: {sign_up_date} | {str(e)}")
-                return None
-            this_month_reset = today.replace(day=signup_day)
-            if today.day < signup_day:
-                next_reset = this_month_reset
+            if isinstance(member["sign_up_date"], str):
+                sign_up_date = datetime.strptime(member["sign_up_date"], "%Y-%m-%d")
             else:
-                # get next month (handle year wrap)
-                month = today.month + 1 if today.month < 12 else 1
-                year = today.year if today.month < 12 else today.year + 1
-                import calendar
-                last_day = calendar.monthrange(year, month)[1]
-                day = min(signup_day, last_day)
-                next_reset = today.replace(year=year, month=month, day=day)
+                sign_up_date = member["sign_up_date"]
+            signup_day = sign_up_date.day
+            #base_reset = today.replace(day=signup_day)
+            tmpMonth = today.month
+            tmpYear = today.year
+            if today.day > sign_up_date.day:
+                for i in range(multiplier):
+                    # Move to next month
+                    base_month = tmpMonth + 1 if tmpMonth < 12 else 1
+                    base_year = tmpYear if tmpMonth < 12 else tmpYear + 1
+                    tmpMonth = tmpMonth + 1 if tmpMonth < 12 else 1
+                    tmpYear = tmpYear + 1 if tmpMonth is 1 else tmpYear
+            else:
+                for i in range(multiplier):
+                    base_month = tmpMonth
+                    base_year = tmpYear
+                    tmpMonth = tmpMonth + 1 if tmpMonth < 12 else 1
+                    tmpYear = tmpYear + 1 if tmpMonth is 1 else tmpYear
+            next_reset = datetime(year=base_year, month=base_month, day=signup_day)
             return next_reset
         except:
-            log(f"[calculate_next_reset()] [Line 256] Error")
+            log(f"[calculate_next_reset()] [Line 342] Error")
             return None
     elif reset_period == "Yearly":
         try:
@@ -343,23 +350,20 @@ def calculate_next_reset(reset_period, member):
             dob = member["date_of_birth"]
             if dob:
                 if isinstance(dob, str):
-                    try:
-                        dob = datetime.strptime(dob, "%Y-%m-%d")
-                    except Exception as e:
-                        log(f"[calculate_next_reset()] Failed to parse dob string: {dob} | {str(e)}")
-                        return None
+                    dob = datetime.strptime(dob, "%Y-%m-%d")
                 try:
-                    next_reset = dob.replace(year=today.year)
+                    base = dob.replace(year=today.year)
                 except ValueError:
-                    log(f"[calculate_next_reset()] [Line 250] ValueError(leap year)")
-                    next_reset = dob.replace(month=2, day=28, year=today.year)
-                except Exception as e:
-                    log(f"[calculate_next_reset()] [EXCEPTION] {str(e)}")
-                if next_reset < today:
-                    next_reset = next_reset.replace(year=today.year + 1)
-            else:
-                next_reset = today.replace(year=today.year + 1)
-            return next_reset
+                    base = dob.replace(month=2, day=28, year=today.year)
+                if base < today:
+                    try:
+                        base = dob.replace(year=today.year + 1)
+                    except ValueError:
+                        base = dob.replace(month=2, day=28, year=today.year + 1)
+                try:
+                    return base.replace(year=base.year + (multiplier - 1))
+                except ValueError:
+                    return base.replace(month=2, day=28, year=base.year + (multiplier - 1))
         except:
             log(f"[calculate_next_reset()] Error")
             return None
@@ -792,21 +796,63 @@ def claim_perk():
             next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
             try:
                 c.execute('''
-                    INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO member_perks (member_id, perk_id, last_claimed, next_reset_date, multiplier)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT (member_id, perk_id)
                     DO UPDATE SET
                         last_claimed = EXCLUDED.last_claimed,
                         next_reset_date = EXCLUDED.next_reset_date
-                ''', (data['member_id'], data['perk_id'], now, next_reset))
+                ''', (data['member_id'], data['perk_id'], now, next_reset, 1))
             except Exception as e:
-                log('[DB ERROR] Line 646: ' + str(e))
+                log('[DB ERROR] Line 804: ' + str(e))
             try:
                 conn.commit()
             except Exception as e:
                 log('[DB ERROR] Line 650: ' + str(e))
             log(f'[POST] 200 /api/member_perks/claim')
             return ('OK', 200)
+        finally:
+            conn.close()
+
+@app.route('/api/member_perks/advance', methods=['POST'])
+def advance_perk_period():
+    data = request.json
+    with db_lock:
+        conn = get_connection()
+        try:
+            c = conn.cursor()
+            c.execute('''
+                SELECT multiplier FROM member_perks
+                WHERE member_id = %s AND perk_id = %s
+            ''', (data['member_id'], data['perk_id']))
+            row = c.fetchone()
+            current_multiplier = row["multiplier"] if row and row["multiplier"] else 1
+            new_multiplier = current_multiplier + 1
+
+            c.execute('SELECT reset_period FROM perks WHERE id = %s', (data['perk_id'],))
+            perk = c.fetchone()
+            reset_period = perk["reset_period"] if perk else None
+            if reset_period == "Unlimited":
+                return jsonify({"error": "Unlimited perks cannot be extended"}), 400
+
+            c.execute('SELECT sign_up_date, date_of_birth FROM members WHERE member_id = %s', (data['member_id'],))
+            member = c.fetchone()
+            member_data = {
+                "sign_up_date": member["sign_up_date"],
+                "date_of_birth": member["date_of_birth"],
+                "multiplier": new_multiplier
+            } if member else {}
+            next_reset = calculate_next_reset(reset_period, member_data) if reset_period else None
+            c.execute('''
+                UPDATE member_perks
+                SET multiplier = %s, next_reset_date = %s
+                WHERE member_id = %s AND perk_id = %s
+            ''', (new_multiplier, next_reset, data['member_id'], data['perk_id']))
+            conn.commit()
+            return jsonify({"status": "advanced", "multiplier": new_multiplier, "next_reset_date": next_reset.isoformat() if next_reset else None})
+        except Exception as e:
+            log('[DB ERROR] /api/member_perks/advance: ' + str(e))
+            return jsonify({"error": str(e)}), 500
         finally:
             conn.close()
 

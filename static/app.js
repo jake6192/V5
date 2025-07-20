@@ -2,7 +2,7 @@
 
 $(document).ready(function () {
 	let currentTierId = null,
-	    currentMemberId = null,
+	    currentMember = null,
 	    modalStack = [],
 	    showUnlimited = !0;
 
@@ -350,17 +350,25 @@ $(document).ready(function () {
 	// ========== MEMBER PERKS ==========
 	// rendering perk items inside #perksList
 	$(document).on('click', '.viewPerksBtn', function () {
-		currentMemberId = $(this).data('id');
-		const member = allMembers.find(m => m.member_id == currentMemberId);
-		$('#perksModal .memberName').text(member ? `${member.name}` : '');
-		$.get(`/api/member_perks/${currentMemberId}`, perks => {
+		memberId = $(this).data('id');
+		const member = allMembers.find(m => m.member_id == memberId);
+    currentMember = member;
+    refreshPerksModal(memberId, member.name);
+  	openModal('perksModal');
+	});
+  
+  function refreshPerksModal(memberId, memberName) {
+		$('#perksModal .memberName').text(memberName);
+    $("#loadingOverlay").fadeIn(200);
+    fetch(`/api/member_perks/${memberId}`)
+    .then(r => r.json())
+    .then(perks => {
 			const ul = $('#perksList').empty();
 			perks.forEach(p => {
 				const claimed = p.last_claimed !== null && p.last_claimed !== undefined;
 				const isUnlimited = p.reset_period === 'Unlimited';
 				let html = `<li class="perk-item">`;
 				html += `<div><strong>${p.name}</strong> <small class="reset-period">(${p.reset_period})</small></div>`;
-
 				if(!isUnlimited) {
 					html += `<div class="perk-meta">`;
 					if(claimed) {
@@ -370,47 +378,69 @@ $(document).ready(function () {
 						</div>`;
 						html += `<button class="resetPerkBtn" data-id="${p.id}">Reset Perk</button>`;
 						html += `<span class="badge-claimed">Claimed</span>`;
+            html += `<button class="advancePerkBtn" data-id="${p.id}">⏭ Pre-Claim Next Period</button>`
 					} else html += `<button class="claimPerkBtn" data-id="${p.id}">Claim</button>`;
 					html += `</div>`;
 				}
 				html += `</li>`;
 				ul.append(html);
 			});
-			openModal('perksModal');
-		});
-	});
+
+      ul[0].querySelectorAll(".claimPerkBtn").forEach(btn =>
+        btn.onclick = () => claimPerk(btn.dataset.id));
+      ul[0].querySelectorAll(".resetPerkBtn").forEach(btn =>
+        btn.onclick = () => resetPerk(btn.dataset.id));
+      ul[0].querySelectorAll(".advancePerkBtn").forEach(btn =>
+        btn.onclick = () => advancePerk(memberId, btn.dataset.id));
+      $("#loadingOverlay").fadeOut(200);
+    });
+  }
+  
+  function claimPerk(perkId) {
+		if(confirm('Claim this perk?')) {
+			$.ajax({
+				url: '/api/member_perks/claim',
+				type: 'POST',
+				data: JSON.stringify({ member_id: currentMember.member_id, perk_id: perkId }),
+				contentType: 'application/json',
+				success: () => { refreshPerksModal(currentMember.member_id, currentMember.name); }
+			});
+		}
+	}
+  
+  function resetPerk(perkId) {
+		if(confirm('Reset this perk?')) {
+			$.ajax({
+				url: '/api/member_perks/reset',
+				type: 'POST',
+				data: JSON.stringify({ member_id: currentMember.member_id, perk_id: perkId }),
+				contentType: 'application/json',
+				success: () => { refreshPerksModal(currentMember.member_id, currentMember.name); }
+			});
+		}
+  }
+  
+  function advancePerk(memberId, perkId) {
+    if (!confirm("Are you sure you want to claim an additional future period of this perk?")) return;
+    $("#loadingOverlay").fadeIn(200);
+    fetch('/api/member_perks/advance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: memberId, perk_id: perkId })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.error) alert("Error: " + res.error);
+    })
+    .catch(err => alert("Advance failed"))
+    .finally(()=>{ refreshPerksModal(memberId, $(".memberName").text()); $("#loadingOverlay").fadeOut(200); });
+  }
 
 	function formatDMY(dateString) {
 		if(!dateString || dateString === '-' || dateString === 'null') return '-';
 		const d_t=dateString.split` `, [y, m, d] = d_t[0].split('-');
 		return `${d}-${m}-${y} `+(d_t[1]||'');
 	}
-
-	$(document).on('click', '.claimPerkBtn', function () {
-		const perkId = $(this).data('id');
-		if(confirm('Claim this perk?')) {
-			$.ajax({
-				url: '/api/member_perks/claim',
-				type: 'POST',
-				data: JSON.stringify({ member_id: currentMemberId, perk_id: perkId }),
-				contentType: 'application/json',
-				success: () => { $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click(); }
-			});
-		}
-	});
-
-	$(document).on('click', '.resetPerkBtn', function () {
-		const perkId = $(this).data('id');
-		if(confirm('Reset this perk?')) {
-			$.ajax({
-				url: '/api/member_perks/reset',
-				type: 'POST',
-				data: JSON.stringify({ member_id: currentMemberId, perk_id: perkId }),
-				contentType: 'application/json',
-				success: () => { $(`.viewPerksBtn[data-id="${currentMemberId}"]`).click(); }
-			});
-		}
-	});
 
 	// ========== HELPERS ==========
 	function loadTiersIntoSelect(type, selector, selectedId = null, callback) {

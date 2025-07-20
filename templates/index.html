@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Member Perk Tracker</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
@@ -72,6 +72,23 @@
         <input type="checkbox" id="toggleUnlimitedMember" checked>
         Hide discount(%) perks
       </label>
+      <template id="perkTemplate">
+        <li class="perk-item">
+          <div class="perk-meta">
+            <strong class="perk-name"></strong>
+            <span class="badge-claimed">✅ Claimed</span>
+          </div>
+          <div class="perk-dates">
+            <span class="reset-period"></span>
+            <span class="reset-date"></span>
+          </div>
+          <div class="perk-actions">
+            <button class="claimPerkBtn">Claim</button>
+            <button class="resetPerkBtn">Reset</button>
+            <button class="advancePerkBtn">⏭ Claim Next Period</button>
+          </div>
+        </li>
+      </template>
     </div>
   </div>
 
@@ -135,7 +152,7 @@
     <div class="loading-text">Waiting for server...</div>
   </div>
 
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}?v=1.0.7"></script>
   <script>
     let fetchLogs = () => {
       fetch('/logs').then(r => r.json()).then(logs => {
