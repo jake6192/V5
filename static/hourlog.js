@@ -87,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // === Backend replacement ===
   async function loadShifts() {
+    showOverlay();
     const res = await fetch("/api/shifts");
     let data = await res.json();
     if (!Array.isArray(data)) {
@@ -96,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
     allShifts = data;
     renderTable();
     updateFilterOptions();
+    hideOverlay();
   }
 
   async function saveShifts() {
@@ -105,8 +107,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function deleteShift(id) {
-    await fetch(`/api/shifts/${id}`, { method: "DELETE" });
-    saveShifts();
+    if(confirm("Are you sure you would like to delete this shift?\n\nThis action cannot be undone.")) {
+      showOverlay();
+      await fetch(`/api/shifts/${id}`, { method: "DELETE" });
+      saveShifts();
+      hideOverlay();
+    }
   }
   window.deleteShift = deleteShift;
 
