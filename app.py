@@ -145,7 +145,7 @@ def get_shifts():
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC')
+        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC, start DESC, "end" DESC')
         rows = cur.fetchall()
         result = []
         for r in rows:

@@ -187,7 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${s.start}</td>
         <td>${s.end}</td>
         <td>${s.venue}</td>
-        <td>${s.hours}</td>
+        <td>${s.hours.toFixed(2)}</td>
         <td>${s.notes || ""}</td>
         <td><button onclick="deleteShift(${s.id})">🗑</button></td>`;
       total += parseFloat(s.hours);
