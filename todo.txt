@@ -1,5 +1,0 @@
-- When a perk is claimed, show annother button to the right of the "Claimed" text, which should allow the user to also claim the next reset_period after the current one also.
--(example - i claim a weekly perk on tuesday 2nd, so it should reset next on monday 8th. But i want to claim one more of those perks right now on tuesday 2nd, so this button allows that but the perk now shouldnt reset until monday 15th.)
--- If we add a column into member_perks called "multiplier", set it to 1 by default, then we can increase that by 1 every time the "claim next period" button is clicked.
---- Then when calculating next reset date, apply the reset period "multiplier" times.
----- This should apply to all reset_periods except unlimited.

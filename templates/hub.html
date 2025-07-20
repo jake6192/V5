@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Simtec Apps Hub</title>
-  <link rel="stylesheet" href="/static/hub.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='hub.css') }}?v=1.0.7">
 </head>
 <body>
   <h1>Simtec Staff Tools</h1>
@@ -30,8 +30,10 @@
     <div class="blob green"></div>
     <div class="blob cream"></div>
     <div class="blob green"></div>
+    <div class="blob cream"></div>
+    <div class="blob green"></div>
   </div>
 
-  <script defer src="/static/hub.js"></script>
+  <script src="{{ url_for('static', filename='hub.js') }}?v=1.0.7"></script>
 </body>
 </html>
