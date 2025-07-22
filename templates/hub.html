@@ -19,10 +19,8 @@
   </div>
   
   <div class="iframe-container">
-    <div id="loadingOverlay">
-      <div class="spinner"></div>
-      <div class="loading-text">Trying to Load Bookings...<br />This doesn't seem to work reliably</div>
-    </div>
+    {% set modal_id = "loadingOverlay" %}
+{% include "_modal.html" %}
   </div>
 
   <div class="blob-container">

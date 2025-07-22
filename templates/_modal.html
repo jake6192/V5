@@ -1,0 +1,91 @@
+{% if modal_id == "pinModal" %}
+<div class="modal" id="pinModal" style="display: none;">
+  <div class="modal-content">
+    <h2>Enter PIN to View Logged Data</h2>
+    <input id="pinInput" maxlength="4" type="password"/>
+    <button id="submitPin">Unlock</button>
+    <p id="pinError"></p>
+  </div>
+</div>
+
+{% elif modal_id == "loadingOverlay" %}
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Waiting for server...</div>
+</div>
+
+{% elif modal_id == "confirmModal" %}
+<div class="modal" id="confirmModal">
+  <div class="modal-content">
+    <h2>Are you sure?</h2>
+    <p>This action cannot be undone.</p>
+    <div class="button-group">
+      <button id="confirmYesBtn">Yes</button>
+      <button id="confirmNoBtn">No</button>
+    </div>
+  </div>
+</div>
+
+{% elif modal_id == "tierModal" %}
+<div class="modal" id="tierModal">
+  <div class="modal-content">
+    <span class="close">×</span>
+    <h2 id="tierModalTitle">{{ modal_title | default("Edit Tier") }}</h2>
+    <input id="tierIdInput" type="hidden"/>
+    <label>Tier Name: <input id="tierNameField" type="text"/></label>
+    <label>Tier Color: <input id="tierColorField" type="color"/></label>
+    <button id="saveTierBtn">Save Tier</button>
+  </div>
+</div>
+
+{% elif modal_id == "perkModal" %}
+<div class="modal" id="perkModal">
+  <div class="modal-content">
+    <span class="close">×</span>
+    <h2 id="perkModalTitle">{{ modal_title | default("Add Perk") }}</h2>
+    <input id="perkIdInput" type="hidden"/>
+    <label>Perk Name: <input id="perkNameField" type="text"/></label>
+    <label>Reset Period:
+      <select id="resetPeriodField">
+        <option value="Weekly">Weekly</option>
+        <option value="Monthly">Monthly</option>
+        <option value="Yearly">Yearly</option>
+        <option value="Unlimited">Unlimited</option>
+      </select>
+    </label>
+    <button id="savePerkBtn">Save Perk</button>
+  </div>
+</div>
+
+{% elif modal_id == "perksModal" %}
+<div class="modal" id="perksModal">
+  <div class="modal-content">
+    <span class="close">×</span>
+    <h2>{{ modal_title | default("Available Perks") }}</h2>
+    <ul id="availablePerksList" class="styled-list"></ul>
+    <button id="addPerkBtn">Add New Perk</button>
+    <template id="availablePerkItemTemplate">
+      <li class="styled-list-item">
+        <span class="perk-name"></span>
+        <span class="perk-actions"></span>
+      </li>
+    </template>
+  </div>
+</div>
+
+{% elif modal_id == "tierPerksModal" %}
+<div class="modal" id="tierPerksModal">
+  <div class="modal-content">
+    <span class="close">×</span>
+    <h2 id="tierPerksTitle">Tier Perks</h2>
+    <ul id="assignedPerksList" class="styled-list"></ul>
+    <template id="assignedPerkItemTemplate">
+      <li class="styled-list-item">
+        <span class="perk-name"></span>
+        <button class="remove-perk">Remove</button>
+      </li>
+    </template>
+    <button id="saveTierPerksBtn">Save Changes</button>
+  </div>
+</div>
+{% endif %}

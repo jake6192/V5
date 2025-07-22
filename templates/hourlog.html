@@ -15,14 +15,8 @@
 	</label>
   </div>
 
-  <div id="pinModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <h2>Enter PIN to View Logged Data</h2>
-      <input type="password" id="pinInput" maxlength="4" />
-      <button id="submitPin">Unlock</button>
-      <p id="pinError"></p>
-    </div>
-  </div>
+  {% set modal_id = "pinModal" %}
+{% include "_modal.html" %}
 
   <div class="container">
     <h1>Staff Hour Log</h1>
@@ -157,10 +151,8 @@
 	<button id="triggerPin" class="primary-button">View Staff Hours</button>
   </div>
 
-  <div id="loadingOverlay">
-    <div class="spinner"></div>
-    <div class="loading-text">Waiting for server...</div>
-  </div>
+  {% set modal_id = "loadingOverlay" %}
+{% include "_modal.html" %}
 
   <script src="{{ url_for('static', filename='hourlog.js') }}?v=1.0.7"></script>
 </body>
