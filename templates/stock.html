@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Manager</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='stock.css') }}?v=1.0.7">
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <h2>Stock</h2>
+      <button id="add-stock-btn">+ Add Item</button>
+      <button id="view-reports-btn">📈 View Reports</button>
+    </div>
+
+    <div class="main-content">
+      <input type="text" id="search-input" placeholder="Filter items...">
+      <div id="stock-list" class="stock-cards"></div>
+    </div>
+  </div>
+
+  <div id="stock-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modal-title">New Item</h3>
+      <input type="text" id="stock-name" placeholder="Name">
+      <input type="text" id="stock-venue" placeholder="Venue">
+      <input type="number" id="stock-price" placeholder="Price" step="0.01">
+      <input type="number" id="stock-cost" placeholder="Cost Price" step="0.01">
+      <input type="number" id="stock-qty" placeholder="Initial Stock">
+      <input type="text" id="stock-desc" placeholder="Description">
+      <input type="text" id="stock-img" placeholder="Image URL">
+      <button id="save-stock-btn">Save</button>
+      <button onclick="closeModal('stock-modal')">Cancel</button>
+    </div>
+  </div>
+
+  <div id="report-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Profit Report</h3>
+      <div id="report-results"></div>
+      <button onclick="closeModal('report-modal')">Close</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='stock.js') }}?v=1.0.7"></script>
+</body>
+</html>

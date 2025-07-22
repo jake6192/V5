@@ -90,3 +90,40 @@ CREATE INDEX IF NOT EXISTS idx_tierperk_pair ON tier_perks(tier_id, perk_id)
 
 print("✅ PostgreSQL schema initialized successfully.")
 conn.close()
+
+
+# --- ADDED FOR TABS + STOCK MODULES ---
+
+c.execute("""
+CREATE TABLE IF NOT EXISTS stock_items (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    venue TEXT NOT NULL,
+    price NUMERIC(6,2) NOT NULL,
+    cost_price NUMERIC(6,2),
+    total_inventory INTEGER DEFAULT 0,
+    description TEXT,
+    image_url TEXT
+)
+""")
+
+c.execute("""
+CREATE TABLE IF NOT EXISTS tabs (
+    id SERIAL PRIMARY KEY,
+    bay_number INTEGER NOT NULL,
+    booking_start TIMESTAMP NOT NULL,
+    duration_minutes INTEGER DEFAULT 60,
+    paid BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+c.execute("""
+CREATE TABLE IF NOT EXISTS tab_items (
+    id SERIAL PRIMARY KEY,
+    tab_id INTEGER REFERENCES tabs(id) ON DELETE CASCADE,
+    item_id INTEGER REFERENCES stock_items(id),
+    quantity INTEGER NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")

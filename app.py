@@ -78,8 +78,12 @@ def download_db():
 # Register blueprints
 from member_tracking import bp as member_bp
 from hourlog import bp as hourlog_bp
+from tabs import tabs_bp
+from stock import stock_bp
 app.register_blueprint(member_bp)
 app.register_blueprint(hourlog_bp)
+app.register_blueprint(tabs_bp)
+app.register_blueprint(stock_bp)
 
 if __name__ == '__main__':
     import argparse
