@@ -69,14 +69,13 @@ def cumulative():
         staff = request.args.get("staff")
         start = request.args.get("start")
         end = request.args.get("end")
-        venue = request.args.get("venue")
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute('''
             SELECT SUM(hours) as total
             FROM shifts
-            WHERE staff = %s AND date >= %s AND date <= %s AND venue = %s
-        ''', (staff, start, end, venue))
+            WHERE staff = %s AND date >= %s AND date <= %s
+        ''', (staff, start, end))
         result = cur.fetchone()
         return jsonify(result)
     except Exception as e:
