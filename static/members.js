@@ -1,4 +1,4 @@
-// static/app.js
+// static/members.js
 
 $(document).ready(function () {
 	let currentTierId = null,

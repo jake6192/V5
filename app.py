@@ -52,7 +52,7 @@ def root(): return render_template('hub.html')
 @app.route('/hourlog')
 def hourlog(): return render_template('hourlog.html')
 @app.route('/member-tracking')
-def member_tracking(): return render_template('index.html')
+def member_tracking(): return render_template('members.html')
 
 # Logs and DB download
 @app.route('/logs')

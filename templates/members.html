@@ -1,4 +1,4 @@
-<!-- templates/index.html -->
+<!-- templates/members.html -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Member Perk Tracker</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
+  <link rel="stylesheet" href="{{ url_for('static', filename='members.css') }}?v=1.0.7">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
@@ -127,7 +127,7 @@
   {% set modal_id = "loadingOverlay" %}
 {% include "_modal.html" %}
 
-  <script src="{{ url_for('static', filename='app.js') }}?v=1.0.7"></script>
+  <script src="{{ url_for('static', filename='members.js') }}?v=1.0.7"></script>
   <script>
     let fetchLogs = () => {
       fetch('/logs').then(r => r.json()).then(logs => {
