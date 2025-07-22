@@ -367,7 +367,8 @@ $(document).ready(function () {
 			perks.forEach(p => {
 				const claimed = p.last_claimed !== null && p.last_claimed !== undefined;
 				const isUnlimited = p.reset_period === 'Unlimited';
-				let html = `<li class="perk-item">`;
+        const hideUnlimited = $('#toggleUnlimitedMember').is(':checked');
+				let html = `<li${isUnlimited && hideUnlimited?' style="display: none;"':''} class="perk-item">`;
 				html += `<div><strong>${p.name}</strong> <small class="reset-period">(${p.reset_period})</small></div>`;
 				if(!isUnlimited) {
 					html += `<div class="perk-meta">`;
