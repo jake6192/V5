@@ -4,16 +4,27 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Staff Hours Log</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
   <link rel="stylesheet" href="{{ url_for('static', filename='hourlog.css') }}?v=1.0.7">
 </head>
 <body>
-  <div class="theme-toggle">
-	<label for="darkModeToggle" class="theme-label">Toggle Dark Mode</label>
-	<label class="switch">
-	  <input type="checkbox" id="darkModeToggle" />
-	  <span class="slider"></span>
-	</label>
-  </div>
+  <header>
+    <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="40">
+    </div>
+    <div class="header-text">
+      <h1 class="header-title">STAFF</h1>
+      <p class="header-tagline">HOURS WORKED</p>
+    </div>
+    <div class="theme-toggle">
+      <label for="darkModeToggle" class="theme-label">Toggle Dark Mode</label>
+      <label class="switch">
+        <input type="checkbox" id="darkModeToggle" />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </header>
 
   {% set modal_id = "pinModal" %}
 {% include "_modal.html" %}

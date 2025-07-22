@@ -1,0 +1,59 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 0;
+  margin: 0;
+  background-color: #f7fdb5;
+}
+header {
+  background-color: #073f35;
+  color: white;
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  justify-content: flex-start;
+  border-bottom: 4px groove #6a6;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  max-height: 75px;
+}
+.home-button {
+  min-width: fit-content;
+  max-width: fit-content;
+  background-color: #0a4a3c;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  margin-right: 20px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  transition: background-color 0.3s ease;
+}
+.home-button:hover {
+  background-color: #0d5c4a;
+}
+header .brand {
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  margin-right: 20px;
+}
+.header-text {
+  display: flex;
+  flex-direction: column;
+}
+.header-title {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.6rem;
+  letter-spacing: 1px;
+}
+.header-tagline {
+  margin: 0;
+  color: #a5d6a7;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}

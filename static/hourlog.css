@@ -1,10 +1,5 @@
 body {
-  font-family: sans-serif;
-  background: #f8f9fa;
-  color: #333;
-  margin: 0;
-  padding: 2rem;
-  transition: background 0.8s ease, color 0.8s ease;
+  padding-top: 150px;
 }
 
 .dark body {
@@ -198,6 +193,8 @@ body {
   gap: 0.5rem;
   font-weight: bold;
   font-size: 0.95rem;
+  padding-top: 0.6rem;
+  margin-right: 10px;
 }
 
 /* Optional: dark mode label color */
