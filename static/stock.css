@@ -63,6 +63,7 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  align-content: center;
 }
 .modal-content {
   background: white;
@@ -72,6 +73,7 @@ body {
   overflow-y: auto;
   width: 90%;
   max-width: 800px;
+  margin: auto;
 }
 .close {
   float: right;
@@ -249,7 +251,7 @@ body {
 .profit-table table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin: 10px auto 20px;
 }
 .profit-table th,
 .profit-table td {

@@ -183,7 +183,11 @@ def delete_tab(tab_id):
         JOIN stock_items si ON ti.item_id = si.id
         WHERE ti.tab_id = %s
     """, (tab_id_val,))
-    result = cur.fetchone()
+    try:
+        result = cur.fetchone()
+        total = result[0]
+    except (psycopg2.ProgrammingError, TypeError, IndexError):
+        total = 0
     total_price, total_cost = result[0], result[1]
 
     # 3. Archive paid tabs
@@ -209,7 +213,11 @@ def delete_tab(tab_id):
             """, (archive_id, *item))
 
     # 4. Log loss if unpaid and not force_paid
-    total = cur.fetchone()[0]
+        try:
+            result = cur.fetchone()
+            total = result[0]
+        except (psycopg2.ProgrammingError, TypeError, IndexError):
+            total = 0
     if not is_paid and not force_paid:
         cur.execute("""
             INSERT INTO unpaid_losses (tab_id, amount)

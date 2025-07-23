@@ -14,6 +14,7 @@
       <h2>Stock</h2>
       <button id="add-stock-btn">+ Add Item</button>
       <button id="openSummary">📈 View Profit Reports</button>
+      <!-- <button id="openReportBtn">📈 View Profit Reports</button> -->
     </div>
 
     <div class="main-content">
@@ -39,34 +40,22 @@
     </div>
   </div>
 
-  <!-- <div id="reportModal" class="modal" style="display:none;">
+  <div id="financialModal" class="modal">
     <div class="modal-content">
-      <span class="close" id="closeReportModal">&times;</span>
-      <h2>Profit Report</h2>
-      <div id="report-results" class="report-table-container"></div>
+      <h2>Financial Report</h2>
+      <div class="revenue-summary">
+        <p><strong>Unpaid Losses:</strong> £<span id="summary-losses">0.00</span></p>
+        <p><strong>Gross Loss:</strong> £<span id="summary-net">0.00</span></p>
+      </div>
+      <div class="profit-table">
+        <h3>Item Profit Report</h3>
+        <div id="report-results" class="report-table-container"></div>
+      </div>
+      <button onclick="closeModal('financialModal')">Close</button>
     </div>
-  </div> -->
+  </div>
 
   <script src="{{ url_for('static', filename='stock.js') }}?v=1.0.7"></script>
   <script src="{{ url_for('static', filename='jquery-3.7.1.slim.min.js') }}?v=1.0.7"></script>
-
-<!-- 📊 Unified Financial Report Modal -->
-<div id="financialModal" class="modal">
-  <div class="modal-content">
-    <h2>Financial Report</h2>
-
-    <!-- Revenue Summary Section -->
-    <div class="revenue-summary">
-      <p><strong>Total Paid Revenue:</strong> £<span id="summary-paid">0.00</span></p>
-      <p><strong>Unpaid Losses:</strong> £<span id="summary-losses">0.00</span></p>
-      <p><strong>Net Revenue:</strong> £<span id="summary-net">0.00</span></p>
-    </div>
-
-    <!-- Profit Table Section -->
-    <div id="report-results" class="report-table-container"></div>
-
-    <button onclick="closeModal('financialModal')">Close</button>
-  </div>
-</div>
 </body>
 </html>

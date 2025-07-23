@@ -136,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/api/summary')
     .then(r => r.json())
     .then(data => {
-      document.getElementById('summary-paid').textContent = data.total_paid.toFixed(2);
       document.getElementById('summary-losses').textContent = data.total_losses.toFixed(2);
       document.getElementById('summary-net').textContent = data.net_revenue.toFixed(2);
       $('#financialModal').show();
