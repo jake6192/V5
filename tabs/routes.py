@@ -155,49 +155,73 @@ def mark_tab_paid(tab_id):
 
 @tabs_bp.route('/api/tabs/<int:tab_id>', methods=['DELETE'])
 def delete_tab(tab_id):
+    force_paid = request.args.get('force_paid') == 'true'
     conn = get_db()
     cur = conn.cursor()
 
-    # 1. Fetch the tab and its total
+    # 1. Fetch tab metadata
     cur.execute("SELECT * FROM tabs WHERE id = %s", (tab_id,))
     tab = cur.fetchone()
     if not tab:
         return jsonify({"error": "Tab not found"}), 404
-    cur2 = conn.cursor()
-    cur2.execute("""
-        SELECT COALESCE(SUM(si.price * ti.quantity), 0)
+
+    # tab[] indices: [id, bay_number, booking_start, duration_minutes, paid, paid_at, created_at, archived]
+    tab_id_val = tab[0]
+    is_paid = tab[4]
+    paid_at = tab[5]
+
+    # 2. Calculate total cost (used for archive or loss)
+    cur.execute("""
+        SELECT COALESCE(SUM(si.price * ti.quantity), 0),
+               COALESCE(SUM(si.cost_price * ti.quantity), 0)
         FROM tab_items ti
         JOIN stock_items si ON ti.item_id = si.id
         WHERE ti.tab_id = %s
-    """, (tab[0],))
-    try:
-        total = cur2.fetchone()[0]
-    except:
-        log_message("Cant get total - delete_tab tabs/routes.py")
-    # 2. Only archive if paid
-    if tab[5]:  # paid = True
+    """, (tab_id_val,))
+    result = cur.fetchone()
+    total_price, total_cost = result[0], result[1]
+
+    # 3. Archive paid tabs
+    if is_paid:
         cur.execute("""
-            INSERT INTO archived_tabs (original_tab_id, bay_number, booking_start, duration_minutes, paid, paid_at, total)
+            INSERT INTO archived_tabs (original_tab_id, bay_number, booking_start, duration_minutes, paid, total, paid_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (tab[0], tab[1], tab[2], tab[3], tab[4], tab[5], total))
+        """, (tab[0], tab[1], tab[2], tab[3], tab[4], total_price, paid_at))
         archive_id = cur.fetchone()[0]
 
-        # 3. Copy tab_items
+        # Copy tab items into archive
         cur.execute("""
             SELECT ti.item_id, si.name, si.price, ti.quantity
             FROM tab_items ti
             JOIN stock_items si ON ti.item_id = si.id
             WHERE ti.tab_id = %s
-        """, (tab_id,))
+        """, (tab_id_val,))
         for item in cur.fetchall():
             cur.execute("""
                 INSERT INTO archived_tab_items (archived_tab_id, item_id, item_name, item_price, quantity)
                 VALUES (%s, %s, %s, %s, %s)
             """, (archive_id, *item))
 
-    # 4. Delete tab
-    cur.execute("DELETE FROM tabs WHERE id = %s", (tab_id,))
+    # 4. Log loss if unpaid and not force_paid
+    if not is_paid and not force_paid:
+        print(f"⚠️ Unpaid tab deleted. Loss recorded: £{total_cost:.2f}")
+        # Optional: insert loss record into audit table
+
+    # 5. Delete tab and items
+    cur.execute("DELETE FROM tab_items WHERE tab_id = %s", (tab_id_val,))
+    cur.execute("DELETE FROM tabs WHERE id = %s", (tab_id_val,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return '', 204
+
+
+@tabs_bp.route('/api/tabs/<int:tab_id>/undo', methods=['POST'])
+def undo_tab_paid(tab_id):
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE tabs SET paid = FALSE, paid_at = NULL WHERE paid = TRUE AND id = %s", (tab_id,))
     conn.commit()
     cur.close()
     conn.close()

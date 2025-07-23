@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const tabList = document.getElementById('tabs-list');
   const newTabBtn = document.getElementById('new-tab-btn');
+  const timerMap = {};
 
   newTabBtn.addEventListener('click', () => {
     document.getElementById('new-tab-modal').classList.remove('hidden');
@@ -30,12 +31,28 @@ document.addEventListener('DOMContentLoaded', () => {
   window.closeModal = id => document.getElementById(id).classList.add('hidden');
 
   async function loadTabs() {
-    tabList.innerHTML = '';
+    $('#tabs-list').html('');
     const res = await fetch('/api/tabs');
     const tabs = await res.json();
     const now = new Date();
 
     for (const tab of tabs) {
+      // Archive timer if paid_at exists
+      if (tab.paid && tab.paid_at) {
+        const paidTime = new Date(tab.paid_at).getTime();
+        const nowTime = Date.now();
+        const msLeft = Math.max(0, (paidTime + 1 * 60000) - nowTime);
+        console.log(msLeft-3600000);//Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
+        if(msLeft-3600000 < 1)//Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
+          await fetch(`/api/tabs/${tab.id}?force_paid=${tab.paid}`, { method: 'DELETE' }).then(loadTabs);
+        else {
+          clearTimeout(timerMap[tab.id]);
+          timerMap[tab.id] = setTimeout(async() => {
+            await fetch(`/api/tabs/${tab.id}?force_paid=${tab.paid}`, { method: 'DELETE' }).then(loadTabs);
+          }, msLeft-3600000);//Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
+        }
+      }
+    
       const card = document.createElement('div');
       card.className = 'tab-card';
       if (tab.paid) card.classList.add('paid');
@@ -54,8 +71,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="tab-footer">
           <div>Total: £${(+tab.total).toFixed(2) || '0.00'}</div>
           <div>
-            <button onclick="markPaid(${tab.id})">Mark Paid</button>
-            <button onclick="deleteTab(${tab.id})">Delete</button>
+            <button id="markPaid" onclick="markPaid(${tab.id})" ${tab.paid ? 'style="display: none;"' : ''}>Mark Paid</button>
+            <button id="markUnPaid" onclick="undoPaid(${tab.id})" ${!tab.paid ? 'style="display: none;"' : ''}>Mark Un-Paid</button>
+            <button onclick="deleteTab(${tab.id}, ${tab.paid})">Delete</button>
           </div>
         </div>`;
 
@@ -174,32 +192,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.markPaid = async (tabId) => {
     await fetch(`/api/tabs/${tabId}/pay`, { method: 'POST' });
+    $('#markPaid, #markUnPaid').toggle();
     loadTabs();
   };
 
-  window.deleteTab = async (tabId) => {
-    await fetch(`/api/tabs/${tabId}`, { method: 'DELETE' });
+  window.undoPaid = async (tabId) => {
+    if (timerMap[tabId]) {
+      clearTimeout(timerMap[tabId]);
+      delete timerMap[tabId];
+    }
+    $('#markPaid, #markUnPaid').toggle();
+    await fetch(`/api/tabs/${tabId}/undo`, { method: 'POST' });
     loadTabs();
   };
 
+  function updateTabTotal(tabId) {
+    let total = 0;
+    // Find all tab items for this tab
+    const itemElements = document.querySelectorAll(`.tab[data-id="${tabId}"] .tab-item-line`);
+    itemElements.forEach(el => {
+      const qtyEl = el.querySelector('[id^="qty-display-"]');
+      const priceAttr = el.getAttribute('data-price');
+      const price = parseFloat(priceAttr);
+      const qty = parseInt(qtyEl?.innerText) || 0;
+
+      total += price * qty;
+    });
+    // Update total display
+    const totalDisplay = document.getElementById(`tab-total-${tabId}`);
+    if (totalDisplay) {
+      totalDisplay.innerText = `£${total.toFixed(2)}`;
+    }
+  }
+
+  window.deleteTab = (tabId, paid) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const box = document.createElement('div');
+    box.className = 'modal-content';
+
+    box.innerHTML = paid
+      ? `<p>This tab is marked as paid. Are you sure you want to delete it?</p>`
+      : `<p>This tab has not been marked as paid.<br>
+          Do you want to delete it anyway (loss will be recorded), or mark it paid and delete?</p>`;
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerText = paid ? 'Delete' : 'Delete Anyway';
+    deleteBtn.onclick = async () => {
+      await fetch(`/api/tabs/${tabId}?force_paid=${paid}`, { method: 'DELETE' });
+      document.body.removeChild(modal);
+      loadTabs();
+    };
+
+    const markAndDeleteBtn = document.createElement('button');
+    markAndDeleteBtn.innerText = 'Mark Paid + Delete';
+    markAndDeleteBtn.onclick = async () => {
+      await fetch(`/api/tabs/${tabId}/pay`, { method: 'POST' });
+      await fetch(`/api/tabs/${tabId}?force_paid=true`, { method: 'DELETE' });
+      document.body.removeChild(modal);
+      loadTabs();
+    };
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerText = 'Cancel';
+    cancelBtn.onclick = () => document.body.removeChild(modal);
+
+    if (!paid) box.appendChild(markAndDeleteBtn);
+    box.appendChild(deleteBtn);
+    box.appendChild(cancelBtn);
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+  };
   loadTabs();
 });
-
-function updateTabTotal(tabId) {
-  let total = 0;
-  // Find all tab items for this tab
-  const itemElements = document.querySelectorAll(`.tab[data-id="${tabId}"] .tab-item-line`);
-  itemElements.forEach(el => {
-    const qtyEl = el.querySelector('[id^="qty-display-"]');
-    const priceAttr = el.getAttribute('data-price');
-    const price = parseFloat(priceAttr);
-    const qty = parseInt(qtyEl?.innerText) || 0;
-
-    total += price * qty;
-  });
-  // Update total display
-  const totalDisplay = document.getElementById(`tab-total-${tabId}`);
-  if (totalDisplay) {
-    totalDisplay.innerText = `£${total.toFixed(2)}`;
-  }
-}
