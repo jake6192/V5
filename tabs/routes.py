@@ -102,6 +102,18 @@ def add_tab_item(tab_id):
     conn.close()
     return '', 204
 
+@tabs_bp.route('/api/tab_items/<int:tab_id>/<int:item_id>', methods=['DELETE'])
+def delete_tab_item(tab_id, item_id):
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM tab_items WHERE tab_id = %s AND item_id = %s", (tab_id, item_id))
+                conn.commit()
+        return '', 204
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @tabs_bp.route('/api/tab_item_qty', methods=['POST'])
 def update_tab_item_qty():
     try:

@@ -99,10 +99,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!display) return;
 
     const current = parseInt(display.innerText) || 1;
-    const newQty = Math.max(1, current + delta);
+    const newQty = Math.max(current + delta);
     display.innerText = newQty;
 
     try {
+      if (newQty <= 0) {
+        await fetch(`/api/tab_items/${tabId}/${itemId}`, { method: 'DELETE' });
+        loadTabs();
+        return;
+      }
       const res = await fetch('/api/tab_item_qty', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
