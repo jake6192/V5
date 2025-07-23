@@ -94,40 +94,40 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStock();
   };
 
-  loadStock();
-});
+  document.getElementById('openReportBtn').addEventListener('click', async () => {
+    const modal = document.getElementById('reportModal');
+    const container = document.getElementById('report-results');
+    modal.style.display = 'flex';
 
-document.getElementById('openReportBtn').addEventListener('click', async () => {
-  const modal = document.getElementById('reportModal');
-  const container = document.getElementById('report-results');
-  modal.style.display = 'flex';
+    const res = await fetch('/api/reports/profit');
+    const data = await res.json();
 
-  const res = await fetch('/api/reports/profit');
-  const data = await res.json();
-
-  let html = '<table><tr><th>Item</th><th>Qty Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr>';
-  let totals = { qty: 0, rev: 0, cost: 0, profit: 0 };
-  data.forEach(row => {
-    const [name, qty, rev, cost, profit] = Object.values(row);
-    totals.qty += qty;
-    totals.rev += parseFloat(rev);
-    totals.cost += parseFloat(cost);
-    totals.profit += parseFloat(profit);
-    html += `<tr>
-      <td>${name}</td>
-      <td>${qty}</td>
-      <td>£${rev.toFixed(2)}</td>
-      <td>£${cost.toFixed(2)}</td>
-      <td class="${profit >= 0 ? 'positive' : 'negative'}">£${profit.toFixed(2)}</td>
-    </tr>`;
+    let html = '<table><tr><th>Item</th><th>Qty Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr>';
+    let totals = { qty: 0, rev: 0, cost: 0, profit: 0 };
+    data.forEach(row => {
+      const [name, qty, rev, cost, profit] = Object.values(row);
+      totals.qty += qty;
+      totals.rev += parseFloat(rev);
+      totals.cost += parseFloat(cost);
+      totals.profit += parseFloat(profit);
+      html += `<tr>
+        <td>${name}</td>
+        <td>${qty}</td>
+        <td>£${rev.toFixed(2)}</td>
+        <td>£${cost.toFixed(2)}</td>
+        <td class="${profit >= 0 ? 'positive' : 'negative'}">£${profit.toFixed(2)}</td>
+      </tr>`;
+    });
+    html += `<tr style="font-weight:bold"><td>Total</td><td>${totals.qty}</td>
+      <td>£${totals.rev.toFixed(2)}</td><td>£${totals.cost.toFixed(2)}</td>
+      <td class="${totals.profit >= 0 ? 'positive' : 'negative'}">£${totals.profit.toFixed(2)}</td></tr>`;
+    html += '</table>';
+    container.innerHTML = html;
   });
-  html += `<tr style="font-weight:bold"><td>Total</td><td>${totals.qty}</td>
-    <td>£${totals.rev.toFixed(2)}</td><td>£${totals.cost.toFixed(2)}</td>
-    <td class="${totals.profit >= 0 ? 'positive' : 'negative'}">£${totals.profit.toFixed(2)}</td></tr>`;
-  html += '</table>';
-  container.innerHTML = html;
-});
 
-document.getElementById('closeReportModal').addEventListener('click', () => {
-  document.getElementById('reportModal').style.display = 'none';
+  document.getElementById('closeReportModal').addEventListener('click', () => {
+    document.getElementById('reportModal').style.display = 'none';
+  });
+  
+  loadStock();
 });
