@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, render_template
 from shared.logger import log_message
-from datetime import datetime
+from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
@@ -52,7 +52,12 @@ def get_tabs():
     tabs = []
     for row in rows:
         tab = dict(zip(column_names, row))  # ✅ safe now
-
+        # Inject ms_left if tab is paid
+        if tab.get("paid") and tab.get("paid_at"):
+            expire_time = tab["paid_at"] + timedelta(minutes=1)
+            ms_left = max(0, int((expire_time - datetime.utcnow()).total_seconds() * 1000))
+            tab["paid_at_utc"] = tab["paid_at"].isoformat() + "Z"
+            tab["auto_archive_timeout_ms"] = ms_left-3600000 #Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
         # New sub-cursor to avoid overwriting cur.description
         cur2 = conn.cursor()
         cur2.execute("""

@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabList = document.getElementById('tabs-list');
   const newTabBtn = document.getElementById('new-tab-btn');
   const timerMap = {};
+  const countdownIntervalMap = {};
 
   newTabBtn.addEventListener('click', () => {
     document.getElementById('new-tab-modal').classList.remove('hidden');
@@ -41,15 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab.paid && tab.paid_at) {
         const paidTime = new Date(tab.paid_at).getTime();
         const nowTime = Date.now();
-        const msLeft = Math.max(0, (paidTime + 1 * 60000) - nowTime);
-        console.log(msLeft-3600000);//Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
-        if(msLeft-3600000 < 1)//Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
+        const msLeft = tab.auto_archive_timeout_ms;
+        if(msLeft < 1)
           await fetch(`/api/tabs/${tab.id}?force_paid=${tab.paid}`, { method: 'DELETE' }).then(loadTabs);
         else {
           clearTimeout(timerMap[tab.id]);
           timerMap[tab.id] = setTimeout(async() => {
             await fetch(`/api/tabs/${tab.id}?force_paid=${tab.paid}`, { method: 'DELETE' }).then(loadTabs);
-          }, msLeft-3600000);//Time zone BST DST UTC GMT todo timezone bugfix bug fix bug-fix
+          }, msLeft);
         }
       }
     
@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       card.innerHTML = `
         <div class="tab-header">
+          <div class="countdown" id="countdown-${tab.id}"></div>
           ${tab.overdue && !tab.paid ? '<div class="overdue-banner">⚠️ OVERDUE TAB</div>' : ''}
           <h3>Bay ${tab.bay_number}: <span>${start.toLocaleTimeString()}<small> (${tab.duration_minutes} min)</small></span></h3>
         </div>
@@ -102,6 +103,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       updateTabTotal(tab.id);
       tabList.appendChild(card);
+      if (tab.paid && tab.auto_archive_timeout_ms > 0) {
+        const countdownEl = card.querySelector(`#countdown-${tab.id}`);
+        countdownEl.style.display = 'block';
+        let i = 1;
+        function updateCountdown() {
+          const remaining = +((tab.auto_archive_timeout_ms/1000)-i).toFixed(0);
+          countdownEl.textContent = `Tab will auto-archive in ${remaining} second${remaining !== 1 ? 's' : ''}`;
+          if (remaining === 0) {
+            clearInterval(countdownIntervalMap[tab.id]);
+          } else i++;
+        }
+        updateCountdown();
+        countdownIntervalMap[tab.id] = setInterval(updateCountdown, 1000);
+      }
 
       const body = card.querySelector('.tab-body');
       const addRow = document.createElement('div');
