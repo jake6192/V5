@@ -85,15 +85,33 @@ def report_profit():
     conn = get_db()
     cur = conn.cursor()
     cur.execute("""
-        SELECT si.name, SUM(ti.quantity) AS sold_qty,
-               SUM(ti.quantity * si.price) AS revenue,
-               SUM(ti.quantity * si.cost_price) AS cost,
-               SUM(ti.quantity * (si.price - si.cost_price)) AS profit
-        FROM tab_items ti
-        JOIN stock_items si ON ti.item_id = si.id
-        JOIN tabs t ON ti.tab_id = t.id
-        WHERE t.paid = TRUE
-        GROUP BY si.name
+        SELECT name, SUM(qty) AS sold_qty,
+               SUM(rev) AS revenue,
+               SUM(cost) AS cost,
+               SUM(profit) AS profit
+        FROM (
+            -- Active paid tabs
+            SELECT si.name, ti.quantity AS qty,
+                   ti.quantity * si.price AS rev,
+                   ti.quantity * si.cost_price AS cost,
+                   ti.quantity * (si.price - si.cost_price) AS profit
+            FROM tab_items ti
+            JOIN stock_items si ON ti.item_id = si.id
+            JOIN tabs t ON ti.tab_id = t.id
+            WHERE t.paid = TRUE
+
+            UNION ALL
+
+            -- Archived paid tabs
+            SELECT si.name, ati.quantity AS qty,
+                   ati.quantity * ati.item_price AS rev,
+                   ati.quantity * si.cost_price AS cost,
+                   ati.quantity * (ati.item_price - si.cost_price) AS profit
+            FROM archived_tab_items ati
+            JOIN stock_items si ON ati.item_id = si.id
+            JOIN archived_tabs at ON ati.archived_tab_id = at.id
+        ) combined
+        GROUP BY name
         ORDER BY profit DESC
     """)
     rows = cur.fetchall()
