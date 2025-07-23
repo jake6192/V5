@@ -5,13 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const addBtn = document.getElementById('add-stock-btn');
   let editingId = null;
 
-  window.closeModal = id => document.getElementById(id).classList.add('hidden');
+  window.closeModal = id => document.getElementById(id).style.display = 'none';
 
   addBtn.onclick = () => {
     editingId = null;
     clearModal();
     document.getElementById('modal-title').innerText = 'New Item';
-    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
   };
 
   document.getElementById('save-stock-btn').onclick = async () => {
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('stock-qty').value = item.total_inventory;
     document.getElementById('stock-desc').value = item.description;
     document.getElementById('stock-img').value = item.image_url;
-    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
   };
 
   window.deleteItem = async (id) => {
@@ -95,10 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   document.getElementById('openReportBtn').addEventListener('click', async () => {
-    const modal = document.getElementById('reportModal');
-    const container = document.getElementById('report-results');
-    modal.style.display = 'flex';
-
+    $('#reportModal').css('display', 'flex');
     const res = await fetch('/api/reports/profit');
     const data = await res.json();
 
@@ -106,23 +103,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let totals = { qty: 0, rev: 0, cost: 0, profit: 0 };
     data.forEach(row => {
       const [name, qty, rev, cost, profit] = Object.values(row);
-      totals.qty += qty;
-      totals.rev += parseFloat(rev);
-      totals.cost += parseFloat(cost);
-      totals.profit += parseFloat(profit);
+      totals.qty += +qty;
+      totals.rev += +rev;
+      totals.cost += +cost;
+      totals.profit += +profit;
       html += `<tr>
         <td>${name}</td>
-        <td>${qty}</td>
-        <td>£${rev.toFixed(2)}</td>
-        <td>£${cost.toFixed(2)}</td>
-        <td class="${profit >= 0 ? 'positive' : 'negative'}">£${profit.toFixed(2)}</td>
+        <td>${+qty}</td>
+        <td>£${(+rev).toFixed(2)}</td>
+        <td>£${(+cost).toFixed(2)}</td>
+        <td class="${+profit >= 0 ? 'positive' : 'negative'}">£${(+profit).toFixed(2)}</td>
       </tr>`;
     });
     html += `<tr style="font-weight:bold"><td>Total</td><td>${totals.qty}</td>
       <td>£${totals.rev.toFixed(2)}</td><td>£${totals.cost.toFixed(2)}</td>
       <td class="${totals.profit >= 0 ? 'positive' : 'negative'}">£${totals.profit.toFixed(2)}</td></tr>`;
     html += '</table>';
-    container.innerHTML = html;
+    $('#report-results').html(html);
   });
 
   document.getElementById('closeReportModal').addEventListener('click', () => {

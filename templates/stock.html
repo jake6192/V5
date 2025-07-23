@@ -11,7 +11,7 @@
     <div class="sidebar">
       <h2>Stock</h2>
       <button id="add-stock-btn">+ Add Item</button>
-      <button id="view-reports-btn">📈 View Reports</button>
+      <button id="openReportBtn">📈 View Profit Reports</button>
     </div>
 
     <div class="main-content">
@@ -35,24 +35,15 @@
     </div>
   </div>
 
-  <div id="report-modal" class="modal hidden">
+  <div id="reportModal" class="modal" style="display:none;">
     <div class="modal-content">
-      <h3>Profit Report</h3>
-      <div id="report-results"></div>
-      <button onclick="closeModal('report-modal')">Close</button>
+      <span class="close" id="closeReportModal">&times;</span>
+      <h2>Profit Report</h2>
+      <div id="report-results" class="report-table-container"></div>
     </div>
   </div>
 
   <script src="{{ url_for('static', filename='stock.js') }}?v=1.0.7"></script>
-
-<button id="openReportBtn" class="report-button">📊 View Profit Report</button>
-<div id="reportModal" class="modal" style="display:none;">
-  <div class="modal-content">
-    <span class="close" id="closeReportModal">&times;</span>
-    <h2>Profit Report</h2>
-    <div id="report-results" class="report-table-container"></div>
-  </div>
-</div>
-
+  <script src="{{ url_for('static', filename='jquery-3.7.1.slim.min.js') }}?v=1.0.7"></script>
 </body>
 </html>
