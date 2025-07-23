@@ -62,13 +62,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'stock-card';
       card.dataset.filter = `${item.name.toLowerCase()} ${item.venue.toLowerCase()}`;
-      card.innerHTML = `
-        <h4>${item.name}</h4>
-        <p>£${item.price} @ ${item.venue}</p>
-        <p><strong>${item.total_inventory}</strong> in stock</p>
-        <button onclick="editItem(${item.id})">Edit</button>
-        <button onclick="deleteItem(${item.id})">Delete</button>
-      `;
+      
+    card.innerHTML = `
+      <div class="stock-title">${item.name}</div>
+      <div class="stock-desc">${item.description || ''}</div>
+      <div class="stock-price">£${item.price} @ ${item.venue}</div>
+      <div class="stock-qty"><strong>${item.total_inventory}</strong> in stock</div>
+      <div class="stock-footer">
+        <button class="btn-edit" onclick="editItem(${item.id})">Edit</button>
+        <button class="btn-delete" onclick="deleteItem(${item.id})">Delete</button>
+      </div>
+    `;
+    
       stockList.appendChild(card);
     }
   }

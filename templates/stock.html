@@ -23,17 +23,19 @@
   </div>
 
   <div id="stock-modal" class="modal hidden">
-    <div class="modal-content">
-      <h3 id="modal-title">New Item</h3>
-      <input type="text" id="stock-name" placeholder="Name">
-      <input type="text" id="stock-venue" placeholder="Venue">
-      <input type="number" id="stock-price" placeholder="Price" step="0.01">
-      <input type="number" id="stock-cost" placeholder="Cost Price" step="0.01">
-      <input type="number" id="stock-qty" placeholder="Initial Stock">
-      <input type="text" id="stock-desc" placeholder="Description">
-      <input type="text" id="stock-img" placeholder="Image URL">
-      <button id="save-stock-btn">Save</button>
-      <button onclick="closeModal('stock-modal')">Cancel</button>
+    <div class="modal-content form-layout">
+      <h2 id="modal-title" class="modal-title">Add New Stock Item</h2>
+      <div class="form-group"><label>Name</label><input type="text" id="stock-name" placeholder="e.g. Americano"></div>
+      <div class="form-group"><label>Venue</label><input type="text" id="stock-venue" placeholder="e.g. Kings Langley"></div>
+      <div class="form-group"><label>Price (£)</label><input type="number" id="stock-price" placeholder="e.g. 2.50" step="0.01"></div>
+      <div class="form-group"><label>Cost Price (£)</label><input type="number" id="stock-cost" placeholder="e.g. 0.75" step="0.01"></div>
+      <div class="form-group"><label>Initial Stock</label><input type="number" id="stock-qty" placeholder="e.g. 50"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="stock-desc" placeholder="Optional notes..."></div>
+      <div class="form-group"><label>Image URL</label><input type="text" id="stock-img" placeholder="https://..."></div>
+      <div class="form-actions">
+        <button id="save-stock-btn" class="btn btn-green">Save</button>
+        <button onclick="closeModal('stock-modal')" class="btn btn-red">Cancel</button>
+      </div>
     </div>
   </div>
 
