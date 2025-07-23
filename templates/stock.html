@@ -5,10 +5,12 @@
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Stock Manager</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='stock.css') }}?v=1.0.7">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
 </head>
 <body>
   <div class="container">
     <div class="sidebar">
+      <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
       <h2>Stock</h2>
       <button id="add-stock-btn">+ Add Item</button>
       <button id="openReportBtn">📈 View Profit Reports</button>

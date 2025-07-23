@@ -11,7 +11,7 @@ body {
 }
 .sidebar {
   width: 220px;
-  background: #444;
+  background: #07372c;
   color: #fff;
   padding: 1rem;
 }
@@ -23,6 +23,7 @@ body {
 .main-content {
   flex-grow: 1;
   padding: 1rem;
+  background: #f7fdb5;
 }
 .tab-cards {
   display: grid;

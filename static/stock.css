@@ -11,7 +11,7 @@ body {
 }
 .sidebar {
   width: 220px;
-  background: #444;
+  background: #07372c;
   color: #fff;
   padding: 1rem;
 }
@@ -23,11 +23,13 @@ body {
 .main-content {
   flex-grow: 1;
   padding: 1rem;
+  background: #f7fdb5;
 }
 .stock-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1rem;
+  margin-top: 1rem;
 }
 .stock-card {
   background: white;

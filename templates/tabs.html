@@ -5,10 +5,12 @@
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Bay Tabs</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='tabs.css') }}?v=1.0.7">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
 </head>
 <body>
   <div class="container">
     <div class="sidebar">
+      <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
       <h2>Tabs</h2>
       <button id="new-tab-btn">+ New Tab</button>
     </div>
