@@ -72,3 +72,48 @@ body {
 .hidden {
   display: none;
 }
+
+
+.tab-item-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-item-line .item-name {
+  flex: 1;
+}
+
+.tab-item-line .item-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tab-item-line .item-controls button {
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+}
+
+.add-new-row {
+  margin-top: 10px;
+  font-style: italic;
+  color: grey;
+  cursor: pointer;
+  padding: 6px;
+  border: 1px dashed #ccc;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.add-new-row:hover {
+  background: #f0f0f0;
+}
+
+.tab-card.paid {
+  background: #e6ffe6;
+  border: 2px solid #4CAF50;
+}

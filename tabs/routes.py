@@ -21,28 +21,47 @@ def tabs_page():
 
 @tabs_bp.route('/api/tabs', methods=['POST'])
 def create_tab():
-    data = request.json
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO tabs (bay_number, booking_start, duration_minutes)
-        VALUES (%s, %s, %s) RETURNING id
-    """, (data['bay_number'], data['booking_start'], data.get('duration_minutes', 60)))
-    tab_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({'tab_id': tab_id})
+    data = request.get_json()
+    try:
+        bay = int(data['bay_number'])
+        booking = datetime.fromisoformat(data['booking_start'])
+        duration = int(data['duration_minutes'])
+    except (ValueError, KeyError):
+        return jsonify({"error": "Invalid input"}), 400
+
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO tabs (bay_number, booking_start, duration_minutes)
+                VALUES (%s, %s, %s) RETURNING id
+            """, (bay, booking, duration))
+            tab_id = cur.fetchone()[0]
+            conn.commit()
+    return jsonify({'id': tab_id})
 
 @tabs_bp.route('/api/tabs')
 def get_tabs():
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute("SELECT * FROM tabs ORDER BY id DESC")
+            rows = cur.fetchall()
+            return jsonify([dict(row) for row in rows])
+
+@tabs_bp.route('/api/tab_items/<int:tab_id>')
+def get_tab_items(tab_id):
     conn = get_db()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute("SELECT * FROM tabs ORDER BY created_at DESC")
-    tabs = cur.fetchall()
+    cur.execute("""
+        SELECT ti.*, si.name, si.price
+        FROM tab_items ti
+        JOIN stock_items si ON ti.item_id = si.id
+        WHERE ti.tab_id = %s
+        ORDER BY ti.added_at
+    """, (tab_id,))
+    items = cur.fetchall()
     cur.close()
     conn.close()
-    return jsonify(tabs)
+    return jsonify(items)
 
 @tabs_bp.route('/api/tabs/<int:tab_id>/items', methods=['POST'])
 def add_tab_item(tab_id):
