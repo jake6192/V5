@@ -62,18 +62,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'stock-card';
       card.dataset.filter = `${item.name.toLowerCase()} ${item.venue.toLowerCase()}`;
-      
-    card.innerHTML = `
-      <div class="stock-title">${item.name}</div>
-      <div class="stock-desc">${item.description || ''}</div>
-      <div class="stock-price">£${item.price} @ ${item.venue}</div>
-      <div class="stock-qty"><strong>${item.total_inventory}</strong> in stock</div>
-      <div class="stock-footer">
-        <button class="btn-edit" onclick="editItem(${item.id})">Edit</button>
-        <button class="btn-delete" onclick="deleteItem(${item.id})">Delete</button>
-      </div>
-    `;
-    
+      card.innerHTML = `
+        <div class="stock-title">${item.name}</div>
+        <img class="stock-img" src="${item.image_url || 'loading.png'}" alt="${item.name}">
+        <div class="stock-price">£${item.price} @ ${item.venue}</div>
+        <div class="stock-qty"><strong>${item.total_inventory}</strong> in stock</div>
+        <div class="stock-footer">
+          <button class="btn-edit" onclick="editItem(${item.id})">Edit</button>
+          <button class="btn-delete" onclick="deleteItem(${item.id})">Delete</button>
+        </div>
+      `;
+      if (!item.image_url) {
+        fetch(`/api/fetch_image?q=${encodeURIComponent(item.name)}`)
+          .then(res => res.json())
+          .then(data => card.querySelector('img').src = data.bestImageUrl)
+          .catch(() => console.warn('No fallback image found'));
+      }
       stockList.appendChild(card);
     }
   }

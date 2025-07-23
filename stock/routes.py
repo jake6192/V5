@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, render_template
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import requests
+import re
 
 stock_bp = Blueprint('stock', __name__)
 
@@ -118,3 +120,24 @@ def report_profit():
     cur.close()
     conn.close()
     return jsonify(rows)
+
+@stock_bp.route("/api/fetch_image")
+def fetch_image():
+    query = request.args.get("q", "")
+    if not query:
+        return jsonify({"error": "Missing query"}), 400
+
+    headers = {"User-Agent": "Mozilla/5.0"}
+    search_url = "https://duckduckgo.com/"
+    session = requests.Session()
+    res = session.get(search_url, params={"q": query, "iax": "images", "ia": "images"}, headers=headers)
+    token_match = re.search(r'vqd=([\d-]+)&', res.text)
+    if not token_match:
+        return jsonify({"error": "Token not found"}), 500
+    vqd = token_match.group(1)
+
+    image_res = session.get("https://duckduckgo.com/i.js", params={"q": query, "vqd": vqd}, headers=headers)
+    data = image_res.json()
+    if "results" in data and data["results"]:
+        return jsonify({"bestImageUrl": data["results"][0]["image"]})
+    return jsonify({"error": "No image found"}), 404
