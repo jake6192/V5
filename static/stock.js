@@ -109,26 +109,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = await fetch('/api/reports/profit');
     const data = await res.json();
 
-    let html = '<table><tr><th>Item</th><th>Qty Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr>';
-    let totals = { qty: 0, rev: 0, cost: 0, profit: 0 };
+    let html = `<table><tr>
+      <th>Item</th><th>Qty Sold</th><th>Qty Lost</th><th>Revenue</th><th>Cost</th>
+      <th>Profit</th><th>Loss</th><th>Total P/L</th></tr>`;
+    let totals = { sold: 0, lost: 0, rev: 0, cost: 0, profit: 0, loss: 0, net: 0 };
     data.forEach(row => {
-      const [name, qty, rev, cost, profit] = Object.values(row);
-      totals.qty += +qty;
-      totals.rev += +rev;
+      const [ name, sold_qty, qty_lost, revenue, cost, profit, loss, total_pl ] = [...row];
+      totals.sold += +sold_qty;
+      totals.lost += +qty_lost;
+      totals.rev += +revenue;
       totals.cost += +cost;
       totals.profit += +profit;
+      totals.loss += +loss;
+      totals.net += +total_pl;
       html += `<tr>
         <td>${name}</td>
-        <td>${+qty}</td>
-        <td>£${(+rev).toFixed(2)}</td>
-        <td>£${(+cost).toFixed(2)}</td>
-        <td class="${+profit >= 0 ? 'positive' : 'negative'}">£${(+profit).toFixed(2)}</td>
-      </tr>`;
+        <td>${sold_qty}</td>
+        <td>${qty_lost}</td>
+        <td>£${revenue}</td>
+        <td>£${cost}</td>
+        <td class='${+profit >= 0 ? 'positive' : 'negative'}'>£${profit}</td>
+        <td class='${+loss >= 0 ? 'negative' : 'positive'}'>£${loss}</td>
+        <td class='${+total_pl >= 0 ? 'positive' : 'negative'}'>£${total_pl}</td>`;
     });
-    html += `<tr style="font-weight:bold"><td>Total</td><td>${totals.qty}</td>
+    html += `<tr style='font-weight:bold'><td>Total</td>
+      <td>${totals.sold}</td><td>${totals.lost}</td>
       <td>£${totals.rev.toFixed(2)}</td><td>£${totals.cost.toFixed(2)}</td>
-      <td class="${totals.profit >= 0 ? 'positive' : 'negative'}">£${totals.profit.toFixed(2)}</td></tr>`;
-    html += '</table>';
+      <td class='${totals.profit >= 0 ? 'positive' : 'negative'}'>£${totals.profit.toFixed(2)}</td>
+      <td class='${totals.loss >= 0 ? 'negative' : 'positive'}'>£${totals.loss.toFixed(2)}</td>
+      <td class='${totals.net >= 0 ? 'positive' : 'negative'}'>£${totals.net.toFixed(2)}</td>`;
+    html += '</tr></table>';
     $('#report-results').html(html);
   });
   

@@ -111,14 +111,29 @@ def delete_stock_item(item_id):
 def report_profit():
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("""
-        SELECT name, SUM(qty) AS sold_qty,
-               SUM(rev) AS revenue,
-               SUM(cost) AS cost,
-               SUM(profit) AS profit
+        WITH losses AS (
+            SELECT si.id AS item_id, SUM(ti.quantity) AS qty_lost
+            FROM unpaid_losses ul
+            JOIN tabs t ON ul.tab_id = t.id
+            JOIN tab_items ti ON ti.tab_id = t.id
+            JOIN stock_items si ON ti.item_id = si.id
+            WHERE t.paid = TRUE
+            GROUP BY si.id
+        )
+        SELECT
+            combined.name,
+            SUM(combined.qty) AS sold_qty,
+            COALESCE(losses.qty_lost, 0) AS qty_lost,
+            SUM(combined.rev) AS revenue,
+            SUM(combined.cost) AS cost,
+            SUM(combined.profit) AS profit,
+            COALESCE(losses.qty_lost, 0) * si.cost_price AS loss,
+            SUM(combined.profit) - COALESCE(losses.qty_lost, 0) * si.cost_price AS total_pl
         FROM (
             -- Active paid tabs
-            SELECT si.name, ti.quantity AS qty,
+            SELECT si.id AS item_id, si.name, ti.quantity AS qty,
                    ti.quantity * si.price AS rev,
                    ti.quantity * si.cost_price AS cost,
                    ti.quantity * (si.price - si.cost_price) AS profit
@@ -130,7 +145,7 @@ def report_profit():
             UNION ALL
 
             -- Archived paid tabs
-            SELECT si.name, ati.quantity AS qty,
+            SELECT si.id AS item_id, si.name, ati.quantity AS qty,
                    ati.quantity * ati.item_price AS rev,
                    ati.quantity * si.cost_price AS cost,
                    ati.quantity * (ati.item_price - si.cost_price) AS profit
@@ -138,15 +153,16 @@ def report_profit():
             JOIN stock_items si ON ati.item_id = si.id
             JOIN archived_tabs at ON ati.archived_tab_id = at.id
         ) combined
-        GROUP BY name
-        ORDER BY profit DESC
+        LEFT JOIN losses ON combined.item_id = losses.item_id
+        JOIN stock_items si ON combined.item_id = si.id
+        GROUP BY combined.name, losses.qty_lost, si.cost_price
+        ORDER BY total_pl DESC
     """)
+
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    items = rows
-    return jsonify(items)
-
+    return jsonify(rows)
 @stock_bp.route("/api/fetch_image")
 def fetch_image():
     query = request.args.get("q", "")
