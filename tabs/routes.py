@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
+from shared.logger import log_message
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -41,11 +42,31 @@ def create_tab():
 
 @tabs_bp.route('/api/tabs')
 def get_tabs():
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-            cur.execute("SELECT * FROM tabs ORDER BY id DESC")
-            rows = cur.fetchall()
-            return jsonify([dict(row) for row in rows])
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT * FROM tabs")
+    rows = cur.fetchall()
+    column_names = [desc[0] for desc in cur.description]  # 💥 capture before second query
+
+    tabs = []
+    for row in rows:
+        tab = dict(zip(column_names, row))  # ✅ safe now
+
+        # New sub-cursor to avoid overwriting cur.description
+        cur2 = conn.cursor()
+        cur2.execute("""
+            SELECT COALESCE(SUM(si.price * ti.quantity), 0)
+            FROM tab_items ti
+            JOIN stock_items si ON ti.item_id = si.id
+            WHERE ti.tab_id = %s
+        """, (tab['id'],))
+        tab['total'] = cur2.fetchone()[0]
+        cur2.close()
+
+        tabs.append(tab)
+
+    return jsonify(tabs)
 
 @tabs_bp.route('/api/tab_items/<int:tab_id>')
 def get_tab_items(tab_id):
@@ -80,6 +101,35 @@ def add_tab_item(tab_id):
     cur.close()
     conn.close()
     return '', 204
+
+@tabs_bp.route('/api/tab_item_qty', methods=['POST'])
+def update_tab_item_qty():
+    try:
+        data = request.get_json()
+        if data is None:
+            print("❌ No JSON received")
+            return jsonify({'error': 'No JSON received'}), 400
+
+        tab_id = data.get('tab_id')
+        item_id = data.get('item_id')
+        quantity = data.get('quantity')
+        
+        if not all([tab_id, item_id, quantity]):
+            print(f"❌ Missing data: {data}")
+            return jsonify({'error': 'Missing one or more fields'}), 400
+
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE tab_items SET quantity = %s
+            WHERE tab_id = %s AND item_id = %s
+        """, (quantity, tab_id, item_id))
+        conn.commit()
+        return jsonify({'success': True})
+
+    except Exception as e:
+        print(f"❌ Exception in update_tab_item_qty: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @tabs_bp.route('/api/tabs/<int:tab_id>/pay', methods=['POST'])
 def mark_tab_paid(tab_id):

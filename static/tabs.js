@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <ul class="tab-items"></ul>
         </div>
         <div class="tab-footer">
-          <div>Total: £${tab.total?.toFixed(2) || '0.00'}</div>
+          <div>Total: £${(+tab.total).toFixed(2) || '0.00'}</div>
           <div>
             <button onclick="markPaid(${tab.id})">Mark Paid</button>
             <button onclick="deleteTab(${tab.id})">Delete</button>
@@ -74,9 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
         line.innerHTML = `
           <span>${item.name}</span>
           <div>
-            <button onclick="adjustQty(${tab.id}, ${item.id}, -1)">-</button>
-            <span>${item.quantity}</span>
-            <button onclick="adjustQty(${tab.id}, ${item.id}, 1)">+</button>
+            <button onclick="adjustQty(${tab.id}, ${item.item_id}, -1)">-</button>
+            <span id="qty-display-${tab.id}-${item.item_id}">${item.quantity}</span>
+            <button onclick="adjustQty(${tab.id}, ${item.item_id}, 1)">+</button>
           </div>
         `;
         list.appendChild(line);
@@ -96,9 +96,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.adjustQty = async (tabId, itemId, delta) => {
     const display = document.getElementById(`qty-display-${tabId}-${itemId}`);
+    if (!display) return;
+
     const current = parseInt(display.innerText) || 1;
     const newQty = Math.max(1, current + delta);
     display.innerText = newQty;
+
+    try {
+      const res = await fetch('/api/tab_item_qty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tab_id: tabId, item_id: itemId, quantity: newQty })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast('Failed to update quantity', 'error');
+      } else {
+        // ✅ LIVE TOTAL UPDATE
+        updateTabTotal(tabId);
+        loadTabs();
+      }
+    } catch (err) {
+      console.error('❌ Error adjusting qty:', err);
+      showToast('Error updating quantity', 'error');
+    }
   };
 
   window.openAddItemModal = async (tabId, existingItems) => {
@@ -159,18 +181,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function updateTabTotal(tabId) {
-  const tabCard = document.querySelector(`.tab-card[data-tab-id="${tabId}"]`);
-  if (!tabCard) return;
-
-  const itemRows = tabCard.querySelectorAll('.tab-item-line');
   let total = 0;
+  // Find all tab items for this tab
+  const itemElements = document.querySelectorAll(`.tab[data-id="${tabId}"] .tab-item-line`);
+  itemElements.forEach(el => {
+    const qtyEl = el.querySelector('[id^="qty-display-"]');
+    const priceAttr = el.getAttribute('data-price');
+    const price = parseFloat(priceAttr);
+    const qty = parseInt(qtyEl?.innerText) || 0;
 
-  itemRows.forEach(row => {
-    const qty = parseInt(row.getAttribute('data-qty') || '0');
-    const price = parseFloat(row.getAttribute('data-price') || '0');
-    total += qty * price;
+    total += price * qty;
   });
-
-  const totalElem = tabCard.querySelector('.tab-total');
-  if (totalElem) totalElem.textContent = '£' + total.toFixed(2);
+  // Update total display
+  const totalDisplay = document.getElementById(`tab-total-${tabId}`);
+  if (totalDisplay) {
+    totalDisplay.innerText = `£${total.toFixed(2)}`;
+  }
 }
