@@ -91,6 +91,8 @@ def report_profit():
                SUM(ti.quantity * (si.price - si.cost_price)) AS profit
         FROM tab_items ti
         JOIN stock_items si ON ti.item_id = si.id
+        JOIN tabs t ON ti.tab_id = t.id
+        WHERE t.paid = TRUE
         GROUP BY si.name
         ORDER BY profit DESC
     """)
