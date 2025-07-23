@@ -33,8 +33,8 @@ def create_tab():
     with get_db() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO tabs (bay_number, booking_start, duration_minutes)
-                VALUES (%s, %s, %s) RETURNING id
+                INSERT INTO tabs (bay_number, booking_start, duration_minutes, paid)
+                VALUES (%s, %s, %s, FALSE) RETURNING id
             """, (bay, booking, duration))
             tab_id = cur.fetchone()[0]
             conn.commit()
@@ -147,7 +147,7 @@ def update_tab_item_qty():
 def mark_tab_paid(tab_id):
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("UPDATE tabs SET paid = TRUE WHERE id = %s", (tab_id,))
+    cur.execute("UPDATE tabs SET paid = TRUE, paid_at = NOW() WHERE paid = FALSE AND id = %s", (tab_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -157,6 +157,46 @@ def mark_tab_paid(tab_id):
 def delete_tab(tab_id):
     conn = get_db()
     cur = conn.cursor()
+
+    # 1. Fetch the tab and its total
+    cur.execute("SELECT * FROM tabs WHERE id = %s", (tab_id,))
+    tab = cur.fetchone()
+    if not tab:
+        return jsonify({"error": "Tab not found"}), 404
+    cur2 = conn.cursor()
+    cur2.execute("""
+        SELECT COALESCE(SUM(si.price * ti.quantity), 0)
+        FROM tab_items ti
+        JOIN stock_items si ON ti.item_id = si.id
+        WHERE ti.tab_id = %s
+    """, (tab[0],))
+    try:
+        total = cur2.fetchone()[0]
+    except:
+        log_message("Cant get total - delete_tab tabs/routes.py")
+    # 2. Only archive if paid
+    if tab[5]:  # paid = True
+        cur.execute("""
+            INSERT INTO archived_tabs (original_tab_id, bay_number, booking_start, duration_minutes, paid, paid_at, total)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (tab[0], tab[1], tab[2], tab[3], tab[4], tab[5], total))
+        archive_id = cur.fetchone()[0]
+
+        # 3. Copy tab_items
+        cur.execute("""
+            SELECT ti.item_id, si.name, si.price, ti.quantity
+            FROM tab_items ti
+            JOIN stock_items si ON ti.item_id = si.id
+            WHERE ti.tab_id = %s
+        """, (tab_id,))
+        for item in cur.fetchall():
+            cur.execute("""
+                INSERT INTO archived_tab_items (archived_tab_id, item_id, item_name, item_price, quantity)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (archive_id, *item))
+
+    # 4. Delete tab
     cur.execute("DELETE FROM tabs WHERE id = %s", (tab_id,))
     conn.commit()
     cur.close()

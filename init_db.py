@@ -114,6 +114,7 @@ CREATE TABLE IF NOT EXISTS tabs (
     booking_start TIMESTAMP NOT NULL,
     duration_minutes INTEGER DEFAULT 60,
     paid BOOLEAN DEFAULT FALSE,
+    paid_at TIMESTAMP DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
@@ -125,5 +126,29 @@ CREATE TABLE IF NOT EXISTS tab_items (
     item_id INTEGER REFERENCES stock_items(id),
     quantity INTEGER NOT NULL,
     added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+c.execute("""
+CREATE TABLE archived_tabs (
+    id SERIAL PRIMARY KEY,
+    original_tab_id INTEGER,
+    bay_number TEXT,
+    booking_start TIMESTAMP,
+    duration_minutes INTEGER,
+    paid BOOLEAN,
+    total NUMERIC,
+    paid_at TIMESTAMP DEFAULT NOW()
+)
+""")
+
+c.execute("""
+CREATE TABLE archived_tab_items (
+    id SERIAL PRIMARY KEY,
+    archived_tab_id INTEGER REFERENCES archived_tabs(id),
+    item_id INTEGER,
+    item_name TEXT,
+    item_price NUMERIC,
+    quantity INTEGER
 )
 """)
