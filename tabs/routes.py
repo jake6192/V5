@@ -177,7 +177,7 @@ def delete_tab(tab_id):
 
     # 2. Calculate total cost (used for archive or loss)
     cur.execute("""
-        SELECT COALESCE(SUM(si.price * ti.quantity), 0),
+        SELECT COALESCE(SUM(si.price * ti.quantity), 0) AS total_cost,
                COALESCE(SUM(si.cost_price * ti.quantity), 0)
         FROM tab_items ti
         JOIN stock_items si ON ti.item_id = si.id
@@ -209,7 +209,12 @@ def delete_tab(tab_id):
             """, (archive_id, *item))
 
     # 4. Log loss if unpaid and not force_paid
+    total = cur.fetchone()[0]
     if not is_paid and not force_paid:
+        cur.execute("""
+            INSERT INTO unpaid_losses (tab_id, amount)
+            VALUES (%s, %s)
+        """, (tab_id_val, total))
         print(f"⚠️ Unpaid tab deleted. Loss recorded: £{total_cost:.2f}")
         # Optional: insert loss record into audit table
 
@@ -231,3 +236,32 @@ def undo_tab_paid(tab_id):
     cur.close()
     conn.close()
     return '', 204
+
+
+@tabs_bp.route('/api/summary')
+def get_summary():
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Total paid tab revenue
+    cur.execute("""
+        SELECT COALESCE(SUM(si.price * ti.quantity), 0)
+        FROM tab_items ti
+        JOIN stock_items si ON ti.item_id = si.id
+        JOIN tabs t ON ti.tab_id = t.id
+        WHERE t.paid = TRUE
+    """)
+    total_paid = float(cur.fetchone()[0])
+
+    # Total unpaid losses
+    cur.execute("SELECT COALESCE(SUM(amount), 0) FROM unpaid_losses")
+    total_losses = float(cur.fetchone()[0])
+
+    cur.close()
+    conn.close()
+
+    return jsonify({
+        "total_paid": round(total_paid, 2),
+        "total_losses": round(total_losses, 2),
+        "net_revenue": round(total_paid - total_losses, 2)
+    })

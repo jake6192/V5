@@ -28,7 +28,7 @@ def get_stock():
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    items = [dict(row) for row in rows]
+    items = rows
     return jsonify(items)
 
 @stock_bp.route('/api/stock', methods=['POST'])
@@ -144,7 +144,7 @@ def report_profit():
     rows = cur.fetchall()
     cur.close()
     conn.close()
-    items = [dict(row) for row in rows]
+    items = rows
     return jsonify(items)
 
 @stock_bp.route("/api/fetch_image")

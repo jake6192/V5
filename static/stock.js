@@ -103,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadStock();
   };
 
-  document.getElementById('openReportBtn').addEventListener('click', async () => {
+  document.getElementById('openSummary').addEventListener('click', async () => {
+    openFinancialReport();
     $('#reportModal').css('display', 'flex');
     const res = await fetch('/api/reports/profit');
     const data = await res.json();
@@ -130,10 +131,17 @@ document.addEventListener('DOMContentLoaded', () => {
     html += '</table>';
     $('#report-results').html(html);
   });
-
-  document.getElementById('closeReportModal').addEventListener('click', () => {
-    document.getElementById('reportModal').style.display = 'none';
-  });
+  
+  function openFinancialReport() {
+    fetch('/api/summary')
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('summary-paid').textContent = data.total_paid.toFixed(2);
+      document.getElementById('summary-losses').textContent = data.total_losses.toFixed(2);
+      document.getElementById('summary-net').textContent = data.net_revenue.toFixed(2);
+      $('#financialModal').show();
+    });
+  }
   
   loadStock();
 });
