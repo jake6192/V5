@@ -44,5 +44,15 @@
   </div>
 
   <script src="{{ url_for('static', filename='stock.js') }}?v=1.0.7"></script>
+
+<button id="openReportBtn" class="report-button">📊 View Profit Report</button>
+<div id="reportModal" class="modal" style="display:none;">
+  <div class="modal-content">
+    <span class="close" id="closeReportModal">&times;</span>
+    <h2>Profit Report</h2>
+    <div id="report-results" class="report-table-container"></div>
+  </div>
+</div>
+
 </body>
 </html>

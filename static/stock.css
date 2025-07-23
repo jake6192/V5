@@ -72,3 +72,49 @@ body {
 .hidden {
   display: none;
 }
+
+/* Reporting Modal */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  max-height: 80vh;
+  overflow-y: auto;
+  width: 90%;
+  max-width: 800px;
+}
+.close {
+  float: right;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+.report-table-container table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+.report-table-container th, .report-table-container td {
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+  text-align: center;
+}
+.report-table-container td.negative {
+  color: red;
+}
+.report-table-container td.positive {
+  color: green;
+}
+.report-button {
+  padding: 10px 15px;
+  font-size: 1rem;
+  margin: 10px 0;
+  cursor: pointer;
+}

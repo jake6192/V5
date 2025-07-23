@@ -3,8 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('search-input');
   const modal = document.getElementById('stock-modal');
   const addBtn = document.getElementById('add-stock-btn');
-  const reportBtn = document.getElementById('view-reports-btn');
-  const reportModal = document.getElementById('report-modal');
   let editingId = null;
 
   window.closeModal = id => document.getElementById(id).classList.add('hidden');
@@ -29,16 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     closeModal('stock-modal');
     loadStock();
-  };
-
-  reportBtn.onclick = async () => {
-    const res = await fetch('/api/reports/profit');
-    const data = await res.json();
-    const container = document.getElementById('report-results');
-    container.innerHTML = '<table><tr><th>Name</th><th>Qty</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr>' +
-      data.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>£${r[2]}</td><td>£${r[3]}</td><td>£${r[4]}</td></tr>`).join('') +
-      '</table>';
-    reportModal.classList.remove('hidden');
   };
 
   searchInput.oninput = () => {
@@ -107,4 +95,39 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   loadStock();
+});
+
+document.getElementById('openReportBtn').addEventListener('click', async () => {
+  const modal = document.getElementById('reportModal');
+  const container = document.getElementById('report-results');
+  modal.style.display = 'flex';
+
+  const res = await fetch('/api/reports/profit');
+  const data = await res.json();
+
+  let html = '<table><tr><th>Item</th><th>Qty Sold</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr>';
+  let totals = { qty: 0, rev: 0, cost: 0, profit: 0 };
+  data.forEach(row => {
+    const [name, qty, rev, cost, profit] = Object.values(row);
+    totals.qty += qty;
+    totals.rev += parseFloat(rev);
+    totals.cost += parseFloat(cost);
+    totals.profit += parseFloat(profit);
+    html += `<tr>
+      <td>${name}</td>
+      <td>${qty}</td>
+      <td>£${rev.toFixed(2)}</td>
+      <td>£${cost.toFixed(2)}</td>
+      <td class="${profit >= 0 ? 'positive' : 'negative'}">£${profit.toFixed(2)}</td>
+    </tr>`;
+  });
+  html += `<tr style="font-weight:bold"><td>Total</td><td>${totals.qty}</td>
+    <td>£${totals.rev.toFixed(2)}</td><td>£${totals.cost.toFixed(2)}</td>
+    <td class="${totals.profit >= 0 ? 'positive' : 'negative'}">£${totals.profit.toFixed(2)}</td></tr>`;
+  html += '</table>';
+  container.innerHTML = html;
+});
+
+document.getElementById('closeReportModal').addEventListener('click', () => {
+  document.getElementById('reportModal').style.display = 'none';
 });
