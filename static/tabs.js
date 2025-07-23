@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
         list.appendChild(line);
-        addedItemIds.add(item.id);
+        addedItemIds.add(item.item_id);
       }
       updateTabTotal(tab.id);
       tabList.appendChild(card);
