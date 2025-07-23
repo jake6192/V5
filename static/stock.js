@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.filter = `${item.name.toLowerCase()} ${item.venue.toLowerCase()}`;
       card.innerHTML = `
         <div class="stock-title">${item.name}</div>
-        <img class="stock-img" src="${item.image_url || 'loading.png'}" alt="${item.name}">
+        <img class="stock-img" src="${item.image_url || ''}" alt="${item.name}">
         <div class="stock-price">£${item.price} @ ${item.venue}</div>
         <div class="stock-qty"><strong>${item.total_inventory}</strong> in stock</div>
         <div class="stock-footer">
