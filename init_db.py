@@ -154,12 +154,14 @@ CREATE TABLE archived_tab_items (
 """)
 
 c.execute("""
-    CREATE TABLE IF NOT EXISTS unpaid_losses (
-        id SERIAL PRIMARY KEY,
-        tab_id INTEGER REFERENCES tabs(id) ON DELETE SET NULL,
-        amount NUMERIC(10, 2) NOT NULL,
-        deleted_at TIMESTAMP DEFAULT NOW()
-    );
+CREATE TABLE IF NOT EXISTS unpaid_losses (
+    id SERIAL PRIMARY KEY,
+    tab_id INTEGER REFERENCES tabs(id) ON DELETE SET NULL,
+    item_id INTEGER REFERENCES stock_items(id),
+    quantity INTEGER DEFAULT 0,
+    amount NUMERIC(10, 2) NOT NULL,
+    deleted_at TIMESTAMP DEFAULT NOW()
+);
 """)
 c.execute("""
     CREATE INDEX IF NOT EXISTS idx_unpaid_losses_deleted_at
