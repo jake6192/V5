@@ -1,6 +1,5 @@
-
 // hourlog.js — Fully backend-integrated version with ALL original UI functionality preserved
-// Locked in architect mode
+let loadShifts;
 
 function showToast(msg) {
   const toast = document.createElement("div");
@@ -20,10 +19,8 @@ function showToast(msg) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const PIN_CODE = "1234";
   let allShifts = [];
   let currentSort = { column: null, ascending: true };
-  let isPinModalOpen = false;
 
   // Elements
   const staffSelect = document.getElementById("staffSelect");
@@ -48,13 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const endRange = document.getElementById("endRange");
   const calculateBtn = document.getElementById("calculateHours");
   const cumulativeResult = document.getElementById("cumulativeResult");
-
-  const triggerPinBtn = document.getElementById("triggerPin");
-  const pinModal = document.getElementById("pinModal");
-  const pinInput = document.getElementById("pinInput");
-  const submitPin = document.getElementById("submitPin");
-  const pinError = document.getElementById("pinError");
-  const dataSection = document.getElementById("dataSection");
 
   const darkToggle = document.getElementById("darkModeToggle");
   const clearLogsBtn = document.getElementById("clearLogs");
@@ -86,7 +76,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // === Backend replacement ===
-  async function loadShifts() {
+  loadShifts = async() => {
     showOverlay();
     const res = await fetch("/api/shifts");
     let data = await res.json();
@@ -98,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTable();
     updateFilterOptions();
     hideOverlay();
-  }
+  };
 
   async function saveShifts() {
     await loadShifts();  // Re-fetch after post/delete
@@ -276,41 +266,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       renderTable();
     });
-  });
-
-  triggerPinBtn.addEventListener("click", () => {
-    pinModal.style.display = "flex";
-    setTimeout(() => {
-      isPinModalOpen = true;
-      pinInput.focus();
-    }, 0);
-  });
-
-  submitPin.addEventListener("click", () => {
-    if (pinInput.value === PIN_CODE) {
-      pinModal.style.display = "none";
-      isPinModalOpen = false;
-      dataSection.style.display = "block";
-      triggerPinBtn.style.display = "none";
-      loadShifts();
-    } else {
-      pinError.textContent = "Incorrect PIN.";
-      pinModal.querySelector(".modal-content").classList.add("shake");
-      setTimeout(() => pinModal.querySelector(".modal-content").classList.remove("shake"), 500);
-    }
-  });
-
-  pinInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") submitPin.click();
-  });
-
-  window.addEventListener("click", e => {
-    if (isPinModalOpen && !pinModal.querySelector(".modal-content").contains(e.target)) {
-      pinModal.style.display = "none";
-      pinInput.value = "";
-      pinError.innerText = "";
-      isPinModalOpen = false;
-    }
   });
 
   clearLogsBtn.addEventListener("click", async() => {

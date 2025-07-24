@@ -11,7 +11,7 @@
   <div class="container">
     <div class="sidebar">
       <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
-      <div class="home-button" onclick="window.location.href='/stock'">📦 Stock</div>
+      <div class="home-button" id="triggerPin" onclick="triggerPin(function() { window.location.href='/stock'; });">📦 Stock</div>
       <h2>Tabs</h2>
       <button id="new-tab-btn">+ New Tab</button>
     </div>
@@ -32,7 +32,13 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='tabs.js') }}?v=1.0.7"></script>
+  {% set modal_id = "loadingOverlay" %}
+  {% include "_modal.html" %}
+  {% set modal_id = "pinModal" %}
+  {% include "_modal.html" %}
+
   <script src="{{ url_for('static', filename='jquery-3.7.1.slim.min.js') }}?v=1.0.7"></script>
+  <script src="{{ url_for('static', filename='common.js') }}?v=1.0.0"></script>
+  <script src="{{ url_for('static', filename='tabs.js') }}?v=1.0.7"></script>
 </body>
 </html>

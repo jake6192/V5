@@ -1,7 +1,7 @@
 {% if modal_id == "pinModal" %}
-<div class="modal" id="pinModal" style="display: none;">
-  <div class="modal-content">
-    <h2>Enter PIN to View Logged Data</h2>
+<div class="pin-modal" id="pinModal" style="display: none;">
+  <div class="pin-modal-content">
+    <h2>Enter PIN to View</h2>
     <input id="pinInput" maxlength="4" type="password"/>
     <button id="submitPin">Unlock</button>
     <p id="pinError"></p>
@@ -9,7 +9,7 @@
 </div>
 
 {% elif modal_id == "loadingOverlay" %}
-<div id="loadingOverlay">
+<div style="display: none;" id="loadingOverlay">
   <div class="spinner"></div>
   <div class="loading-text">Waiting for server...</div>
 </div>

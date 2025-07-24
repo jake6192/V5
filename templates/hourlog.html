@@ -159,12 +159,15 @@
         <p id="cumulativeResult"></p>
       </div>
     </div>
-	<button id="triggerPin" class="primary-button">View Staff Hours</button>
+    <button onclick="triggerPin(function() { document.getElementById('dataSection').style.display = 'block'; document.getElementById('triggerPin').style.display = 'none'; loadShifts(); });" id="triggerPin" class="primary-button">View Staff Hours</button>
   </div>
 
   {% set modal_id = "loadingOverlay" %}
-{% include "_modal.html" %}
+  {% include "_modal.html" %}
+  {% set modal_id = "pinModal" %}
+  {% include "_modal.html" %}
 
+  <script src="{{ url_for('static', filename='common.js') }}?v=1.0.0"></script>
   <script src="{{ url_for('static', filename='hourlog.js') }}?v=1.0.7"></script>
 </body>
 </html>
