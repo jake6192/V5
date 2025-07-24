@@ -17,10 +17,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-stock-btn').onclick = async () => {
     const payload = getModalData();
     const url = editingId ? `/api/stock/${editingId}` : '/api/stock';
-    const method = editingId ? 'PUT' : 'POST';
+    const _method = editingId ? 'PUT' : 'POST';
 
     await fetch(url, {
-      method,
+      method: _method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cost_price: parseFloat(document.getElementById('stock-cost').value),
       total_inventory: parseInt(document.getElementById('stock-qty').value),
       description: document.getElementById('stock-desc').value,
-      image_url: document.getElementById('stock-img').value
+      image_url: document.getElementById('stock-img').value.trim(),
     };
   }
 
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
       if (!item.image_url) {
-        fetch(`/api/fetch_image?q=${encodeURIComponent(item.name)}`)
+        fetch(`/api/fetch_image?q=${encodeURIComponent(item.name)}&id=${item.id}`)
           .then(res => res.json())
           .then(data => card.querySelector('img').src = data.bestImageUrl)
           .catch(() => console.warn('No fallback image found'));

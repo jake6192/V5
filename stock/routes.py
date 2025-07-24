@@ -52,49 +52,34 @@ def create_stock():
 @stock_bp.route('/api/stock/<int:item_id>', methods=['PUT'])
 def update_stock_item(item_id):
     data = request.json
-    fields = [
-        ('name', data.get('name')),
-        ('venue', data.get('venue')),
-        ('price', data.get('price')),
-        ('cost_price', data.get('cost_price')),
-        ('description', data.get('description')),
-        ('image_url', data.get('image_url')),
-        ('total_inventory', data.get('total_inventory'))
-    ]
-    updates = [f"{k} = %s" for k, v in fields if v is not None]
-    values = [v for _, v in fields if v is not None]
+    conn = get_db()
+    cur = conn.cursor()
 
-    if updates:
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute(f"UPDATE stock_items SET {', '.join(updates)} WHERE id = %s", (*values, item_id))
-        conn.commit()
-        # Refetch image based on new item name
-        from werkzeug.utils import secure_filename
-        headers = {"User-Agent": "Mozilla/5.0"}
-        session = requests.Session()
-        img_query = data.get("name", "")
-        filename = secure_filename(img_query.lower()) + ".jpg"
-        path = os.path.join("static/item_images", filename)
-        os.makedirs("static/item_images", exist_ok=True)
-        try:
-            if not os.path.exists(path):
-                search = session.get("https://duckduckgo.com/", params={"q": img_query, "iax": "images", "ia": "images"}, headers=headers)
-                token = re.search(r'vqd=([\d-]+)&', search.text)
-                if token:
-                    r = session.get("https://duckduckgo.com/i.js", params={"q": img_query, "vqd": token.group(1)}, headers=headers)
-                    img_url = r.json()["results"][0]["image"]
-                    img_data = session.get(img_url, headers=headers, stream=True, timeout=10)
-                    with open(path, "wb") as f:
-                        for chunk in img_data.iter_content(1024):
-                            f.write(chunk)
-            image_url = url_for("static", filename=f"item_images/{filename}")
-            cur.execute("UPDATE stock_items SET image_url = %s WHERE id = %s", (image_url, item_id))
-            conn.commit()
-        except Exception as e:
-            app.logger.warning(f"Image refetch failed for {img_query}: {e}")
-        cur.close()
-        conn.close()
+    image_url = (data.get('image_url') or '').strip()
+    name = data.get('name', '')
+    if not image_url:
+        static_path = f'static/item_images/{item_id}.jpg'
+        if os.path.exists(static_path):
+            image_url = '/' + static_path
+        else:
+            fetch_image(name, item_id)
+            image_url = f'/static/item_images/{item_id}.jpg'
+    cur.execute("""
+        UPDATE stock_items SET name=%s, venue=%s, price=%s, cost_price=%s, total_inventory=%s, description=%s, image_url=%s
+        WHERE id=%s
+    """, (
+        name,
+        data.get('venue'),
+        data.get('price'),
+        data.get('cost_price'),
+        data.get('total_inventory'),
+        data.get('description'),
+        image_url,
+        item_id
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
     return '', 204
 
 @stock_bp.route('/api/stock/<int:item_id>', methods=['DELETE'])
@@ -158,13 +143,18 @@ def report_profit():
     conn.close()
     return jsonify(rows)
 @stock_bp.route("/api/fetch_image")
-def fetch_image():
-    query = request.args.get("q", "")
+def fetch_image(r_name=None, r_item_id=0):
+    if not r_name:
+        query = request.args.get("q", "")
+        item_id = request.args.get("id", "")
+    else:
+        query = r_name
+        item_id = r_item_id
     if not query:
         return jsonify({"error": "Missing query"}), 400
 
     os.makedirs("static/item_images", exist_ok=True)
-    filename = secure_filename(query.lower()) + ".jpg"
+    filename = secure_filename(f"{item_id}") + ".jpg"
     path = os.path.join("static/item_images", filename)
     if os.path.exists(path):
         return jsonify({"bestImageUrl": url_for("static", filename=f"item_images/{filename}")})
