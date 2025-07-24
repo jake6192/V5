@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="tab-header">
           <div class="countdown" id="countdown-${tab.id}"></div>
           ${tab.overdue && !tab.paid ? '<div class="overdue-banner">⚠️ OVERDUE TAB</div>' : ''}
-          <h3>Bay ${tab.bay_number}: <span>${start.toLocaleTimeString()}<small> (${tab.duration_minutes} min)</small></span></h3>
+          <h3>Bay ${tab.bay_number}: <span style="float: right;">${start.toLocaleTimeString().split(':').slice(0,-1).join(':')}<small> (${tab.duration_minutes} min)</small></span></h3>
         </div>
         <div class="tab-body" data-tab-id="${tab.id}">
           <ul class="tab-items"></ul>
