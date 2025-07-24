@@ -2,6 +2,8 @@ body {
   padding-top: 150px;
 }
 
+.home-button { margin: 20px 30px 20px 10px; }
+
 .dark body {
   background: #121212;
   color: #e0e0e0;
@@ -185,16 +187,13 @@ body {
 }
 
 .theme-toggle {
-  position: fixed;
-  top: 10px;
-  right: 10px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-weight: bold;
   font-size: 0.95rem;
-  padding-top: 0.6rem;
-  margin-right: 10px;
+  margin-right: 50px;
+  margin-left: auto;
 }
 
 /* Optional: dark mode label color */
