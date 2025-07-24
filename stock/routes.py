@@ -114,13 +114,9 @@ def report_profit():
 
     cur.execute("""
         WITH losses AS (
-            SELECT si.id AS item_id, SUM(ti.quantity) AS qty_lost
-            FROM unpaid_losses ul
-            JOIN tabs t ON ul.tab_id = t.id
-            JOIN tab_items ti ON ti.tab_id = t.id
-            JOIN stock_items si ON ti.item_id = si.id
-            WHERE t.paid = TRUE
-            GROUP BY si.id
+            SELECT item_id, SUM(quantity) AS qty_lost
+            FROM unpaid_losses
+            GROUP BY item_id
         )
         SELECT
             combined.name,
@@ -132,7 +128,6 @@ def report_profit():
             COALESCE(losses.qty_lost, 0) * si.cost_price AS loss,
             SUM(combined.profit) - COALESCE(losses.qty_lost, 0) * si.cost_price AS total_pl
         FROM (
-            -- Active paid tabs
             SELECT si.id AS item_id, si.name, ti.quantity AS qty,
                    ti.quantity * si.price AS rev,
                    ti.quantity * si.cost_price AS cost,
@@ -144,7 +139,6 @@ def report_profit():
 
             UNION ALL
 
-            -- Archived paid tabs
             SELECT si.id AS item_id, si.name, ati.quantity AS qty,
                    ati.quantity * ati.item_price AS rev,
                    ati.quantity * si.cost_price AS cost,
