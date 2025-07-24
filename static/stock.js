@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = await res.json();
 
     let html = `<table><tr>
-      <th>Item</th><th>Qty Sold</th><th>Qty Lost</th><th>Revenue</th><th>Cost</th>
+      <th>Item</th><th>Qty Sold</th><th>Qty Unpaid</th><th>Revenue</th><th>Cost</th>
       <th>Profit</th><th>Loss</th><th>Total P/L</th></tr>`;
     let totals = { sold: 0, lost: 0, rev: 0, cost: 0, profit: 0, loss: 0, net: 0 };
     data.forEach(row => {
@@ -147,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(r => r.json())
     .then(data => {
       document.getElementById('summary-losses').textContent = data.total_losses.toFixed(2);
-      document.getElementById('summary-net').textContent = data.net_revenue.toFixed(2);
       $('#financialModal').show();
     });
   }
