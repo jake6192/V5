@@ -212,6 +212,23 @@ def delete_tab(tab_id):
                 VALUES (%s, %s, %s, %s, %s)
             """, (archive_id, *item))
 
+    else:
+        # Insert unpaid_losses for each item on the tab
+        cur2 = conn.cursor(cursor_factory=RealDictCursor)
+        cur2.execute("""
+            SELECT item_id, quantity, si.price AS item_price
+            FROM tab_items ti
+            JOIN stock_items si ON ti.item_id = si.id
+            WHERE ti.tab_id = %s
+        """, (tab_id_val,))
+        items = cur2.fetchall()
+        for item in items:
+            amount = item['quantity'] * item['item_price']
+            cur.execute("""
+                INSERT INTO unpaid_losses (tab_id, item_id, quantity, amount)
+                VALUES (%s, %s, %s, %s)
+            """, (tab_id_val, item['item_id'], item['quantity'], amount))
+        cur2.close()
     # 4. Log loss if unpaid and not force_paid
         try:
             result = cur.fetchone()
