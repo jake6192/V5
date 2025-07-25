@@ -92,15 +92,31 @@ def delete_stock_item(item_id):
     conn.close()
     return '', 204
 
-@stock_bp.route('/api/reports/profit')
+@stock_bp.route('/api/reports/profit', methods=['POST'])
 def report_profit():
+    data = request.get_json()
+    date_range = data.get('dateRange', '')
     conn = get_db()
     cur = conn.cursor()
+    clauses = []
+    params = []
 
-    cur.execute("""
+    if isinstance(date_range, dict):
+        start = str(date_range.get('start'))
+        end = str(date_range.get('end'))
+        if start and end and start != 'None' and end != 'None':
+            start += " 00:00:00"
+            end += " 23:59:59.999999"
+            clauses.append("t.paid_at BETWEEN %s AND %s")
+            clauses.append("at.paid_at BETWEEN %s AND %s")
+            clauses.append("ul.deleted_at BETWEEN %s AND %s")
+            params += [start, end, start, end, start, end]
+
+    cur.execute(f"""
         WITH losses AS (
             SELECT item_id, SUM(quantity) AS qty_lost
-            FROM unpaid_losses
+            FROM unpaid_losses ul
+            {'WHERE ' + clauses[2] if clauses else ''}
             GROUP BY item_id
         )
         SELECT
@@ -121,6 +137,7 @@ def report_profit():
             JOIN stock_items si ON ti.item_id = si.id
             JOIN tabs t ON ti.tab_id = t.id
             WHERE t.paid = TRUE
+            {'AND ' + clauses[0] if clauses else ''}
 
             UNION ALL
 
@@ -131,17 +148,19 @@ def report_profit():
             FROM archived_tab_items ati
             JOIN stock_items si ON ati.item_id = si.id
             JOIN archived_tabs at ON ati.archived_tab_id = at.id
+            {'WHERE ' + clauses[1] if clauses else ''}
         ) c
         JOIN stock_items s ON c.item_id = s.id
         LEFT JOIN losses l ON c.item_id = l.item_id
         GROUP BY s.name, l.qty_lost, s.cost_price
         ORDER BY total_pl DESC
-    """)
+    """, params)
 
     rows = cur.fetchall()
     cur.close()
     conn.close()
     return jsonify(rows)
+
 @stock_bp.route("/api/fetch_image")
 def fetch_image(r_name=None, r_item_id=0):
     if not r_name:

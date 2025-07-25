@@ -102,11 +102,60 @@ document.addEventListener('DOMContentLoaded', () => {
     await fetch(`/api/stock/${id}`, { method: 'DELETE' });
     loadStock();
   };
+  
+  function applyDateFilter() {
+    const today = new Date();
+    const formatDate = d => d.toISOString().split('T')[0];
+    let quickFilter = $('#quickFilter').val();
+    if (quickFilter === 'all') {
+        start = end = '';
+    } else if (quickFilter === 'today') {
+        start = end = today;
+    } else if (quickFilter === 'yesterday') {
+        today.setDate(today.getDate()-1);
+        start = end = today;
+    } else if (quickFilter === 'this_week') {
+        const day = today.getDay();
+        const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
+        const monday = new Date(today.setDate(diff));
+        start = monday;
+        end = new Date();
+    } else if (quickFilter === 'this_month') {
+        const first = new Date(today.getFullYear(), today.getMonth(), 1);
+        start = first;
+        end = today;
+    } else if (quickFilter === 'last_7_days') {
+        const last7 = new Date();
+        last7.setDate(today.getDate() - 6);
+        start = last7;
+        end = today;
+    } else {
+        start = document.getElementById('startDate').value;
+        end = document.getElementById('endDate').value;
+    }
+    if(quickFilter != 'all') {
+      start = formatDate(start);
+      end = formatDate(end);
+    }
+    $('#startDate').val(start);
+    $('#endDate').val(end);
+    $('#applyDateFilter')[0].click();
+  }
+  document.getElementById('quickFilter').addEventListener("change", applyDateFilter);
+  document.getElementById('applyDateFilter').addEventListener('click', () => {
+    let start = $('#startDate').val(), end = $('#endDate').val();
+    const range = (start && end) ? { start, end } : '';
+    openSummaryModal(range);
+  });
 
-  document.getElementById('openSummary').addEventListener('click', async () => {
+  let openSummaryModal = async (dateRange) => {
     openFinancialReport();
-    $('#reportModal').css('display', 'flex');
-    const res = await fetch('/api/reports/profit');
+    $("#reportModal").css("display", 'flex');
+    const res = await fetch('/api/reports/profit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dateRange })
+    });
     const data = await res.json();
 
     let html = `<table><tr>
@@ -140,7 +189,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <td class='${totals.net >= 0 ? 'positive' : 'negative'}'>£${totals.net.toFixed(2)}</td>`;
     html += '</tr></table>';
     $('#report-results').html(html);
-  });
+  };
+  document.getElementById('openSummary').addEventListener('click', openSummaryModal);
   
   function openFinancialReport() {
     fetch('/api/summary')

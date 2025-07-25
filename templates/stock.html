@@ -44,6 +44,20 @@
   <div id="financialModal" class="modal">
     <div class="modal-content">
       <h2>Financial Report</h2>
+      <div class="filter-controls">
+        <label>Date Filter:</label>
+        <select id="quickFilter">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="this_week">This Week</option>
+          <option value="this_month">This Month</option>
+          <option value="last_7_days">Last 7 Days</option>
+        </select>
+        <input type="date" id="startDate">
+        <input type="date" id="endDate">
+        <button id="applyDateFilter">Apply</button>
+      </div>
       <div class="profit-table">
         <h3>Item Profit Report</h3>
         <div id="report-results" class="report-table-container"></div>
