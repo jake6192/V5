@@ -114,23 +114,8 @@ def report_profit():
             params += [start, end, start, end, start, end]
 
     cur.execute(f"""
-        WITH losses AS (
-            SELECT item_id, SUM(quantity) AS qty_lost
-            FROM unpaid_losses ul
-            {'WHERE ' + clauses[2] if clauses else ''}
-            GROUP BY item_id
-        )
-        SELECT
-            s.name,
-            SUM(c.qty) AS sold_qty,
-            COALESCE(l.qty_lost, 0) AS qty_lost,
-            SUM(c.rev) AS revenue,
-            SUM(c.cost) + COALESCE(l.qty_lost, 0) * s.cost_price AS cost,
-            SUM(c.profit) AS profit,
-            COALESCE(l.qty_lost, 0) * s.cost_price AS loss,
-            SUM(c.profit) - COALESCE(l.qty_lost, 0) * s.cost_price AS total_pl
-        FROM (
-            SELECT si.id AS item_id, ti.quantity AS qty,
+        WITH sold AS (
+            SELECT si.id AS item_id, ti.quantity AS qty, 
                    ti.quantity * si.price AS rev,
                    ti.quantity * si.cost_price AS cost,
                    ti.quantity * (si.price - si.cost_price) AS profit
@@ -139,9 +124,7 @@ def report_profit():
             JOIN tabs t ON ti.tab_id = t.id
             WHERE t.paid = TRUE
             {'AND ' + clauses[0] if clauses else ''}
-
             UNION ALL
-
             SELECT si.id AS item_id, ati.quantity AS qty,
                    ati.quantity * ati.item_price AS rev,
                    ati.quantity * si.cost_price AS cost,
@@ -150,10 +133,32 @@ def report_profit():
             JOIN stock_items si ON ati.item_id = si.id
             JOIN archived_tabs at ON ati.archived_tab_id = at.id
             {'WHERE ' + clauses[1] if clauses else ''}
-        ) c
-        JOIN stock_items s ON c.item_id = s.id
-        LEFT JOIN losses l ON c.item_id = l.item_id
-        GROUP BY s.name, l.qty_lost, s.cost_price
+        ),
+        lost AS (
+            SELECT ul.item_id, SUM(ul.quantity) AS qty_lost
+            FROM unpaid_losses ul
+            {'WHERE ' + clauses[2] if clauses else ''}
+            GROUP BY ul.item_id
+        ),
+        all_items AS (
+            SELECT item_id FROM sold
+            UNION
+            SELECT item_id FROM lost
+        )
+        SELECT
+            s.name,
+            COALESCE(SUM(sold.qty), 0) AS sold_qty,
+            COALESCE(lost.qty_lost, 0) AS qty_lost,
+            COALESCE(SUM(sold.rev), 0) AS revenue,
+            COALESCE(SUM(sold.cost), 0) + COALESCE(lost.qty_lost, 0) * s.cost_price AS cost,
+            COALESCE(SUM(sold.profit), 0) AS profit,
+            COALESCE(lost.qty_lost, 0) * s.cost_price AS loss,
+            COALESCE(SUM(sold.profit), 0) - COALESCE(lost.qty_lost, 0) * s.cost_price AS total_pl
+        FROM all_items ai
+        JOIN stock_items s ON ai.item_id = s.id
+        LEFT JOIN sold ON ai.item_id = sold.item_id
+        LEFT JOIN lost ON ai.item_id = lost.item_id
+        GROUP BY s.name, lost.qty_lost, s.cost_price
         ORDER BY total_pl DESC
     """, params)
 
