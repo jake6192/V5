@@ -64,13 +64,13 @@ body {
   align-items: center;
   z-index: 1000;
   align-content: center;
+  overflow: auto;
 }
 .modal-content {
   background: white;
   padding: 2rem;
   border-radius: 10px;
-  max-height: fit-content;
-  overflow-y: auto;
+  height: fit-content;
   width: 90%;
   max-width: 800px;
   margin: auto;
@@ -138,6 +138,12 @@ body {
   display: flex;
   justify-content: space-between;
   margin-top: 1rem;
+}
+
+#deleteCachedImageBtn {
+  display: none;
+  width: 35%;
+  margin: 20px auto -10px;
 }
 
 .btn {

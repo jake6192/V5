@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, render_template, url_for
 import os, re, requests, psycopg2
+from stock.utils import has_cached_image, delete_cached_image
 from psycopg2.extras import RealDictCursor
 from werkzeug.utils import secure_filename
 from shared.logger import log_message
@@ -206,3 +207,22 @@ def fetch_image(r_name=None, r_item_id=0):
     cur.close()
     conn.close()
     return jsonify({"bestImageUrl": url_for("static", filename=f"item_images/{filename}")})
+
+@stock_bp.route('/api/check_for_cached_image/<int:item_id>')
+def check_for_cached_image_api(item_id):
+    if has_cached_image(item_id):
+      return jsonify(True)
+    return jsonify(False), 404
+
+@stock_bp.route('/api/delete_cached_image/<int:item_id>', methods=['DELETE'])
+def delete_cached_image_api(item_id):
+    if has_cached_image(item_id):
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE stock_items SET image_url = %s WHERE id = %s", ('', item_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        delete_cached_image(item_id)
+        return jsonify({'success': True})
+    return jsonify({'error': 'No cached image'}), 404

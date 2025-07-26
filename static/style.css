@@ -5,6 +5,7 @@ body {
   background-color: #f7fdb5;
   height: fit-content;
   min-height: 100vh;
+  overflow-y: auto;
 }
 header {
   background-color: #073f35;

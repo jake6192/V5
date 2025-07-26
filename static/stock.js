@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       cost_price: parseFloat(document.getElementById('stock-cost').value),
       total_inventory: parseInt(document.getElementById('stock-qty').value),
       description: document.getElementById('stock-desc').value,
-      image_url: document.getElementById('stock-img').value.trim(),
+      image_url: document.getElementById('stock-img').value.trim().split('?')[0],
     };
   }
 
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
       card.dataset.filter = `${item.name.toLowerCase()} ${item.venue.toLowerCase()}`;
       card.innerHTML = `
         <div class="stock-title">${item.name}</div>
-        <img class="stock-img" src="${item.image_url || ''}" alt="${item.name}">
+        <img class="stock-img" src="${item.image_url ? item.image_url+'?'+new Date().getTime() : ''}" alt="${item.name}">
         <div class="stock-price">£${item.price} @ ${item.venue}</div>
         <div class="stock-qty"><strong>${item.total_inventory}</strong> in stock</div>
         <div class="stock-footer">
@@ -96,9 +96,24 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('stock-desc').value = item.description;
     document.getElementById('stock-img').value = item.image_url;
     modal.style.display = 'flex';
+    const delBtn = document.getElementById('deleteCachedImageBtn');
+    let hasCachedImage;
+    try {
+      hasCachedImage = await fetch(`/api/check_for_cached_image/${item.id}`).catch((e) => { console.log('No Image Cached for id '+item.id); });
+      hasCachedImage = await hasCachedImage.json();
+    } catch(e) { console.error(e); }
+    if(item && item.image_url && item.image_url.includes('/static/item_images/') && hasCachedImage) {
+      $(delBtn).show();
+      delBtn.onclick = () => {
+        fetch(`/api/delete_cached_image/${item.id}`, { method: 'DELETE' })
+        .then(res => res.json()).then(r => { /*loadStock();*/ alert(r.success ? 'Image deleted' : r.error); $(delBtn).hide(); $('#stock-img').val(''); });
+      };
+    } else delBtn.style.display = 'none';
   };
 
   window.deleteItem = async (id) => {
+    await fetch(`/api/delete_cached_image/${id}`, { method: 'DELETE' })
+          .then(res => res.json()).then(r => { alert(r.success ? 'Image deleted' : r.error); });
     await fetch(`/api/stock/${id}`, { method: 'DELETE' });
     loadStock();
   };
