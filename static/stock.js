@@ -104,34 +104,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   
   function applyDateFilter() {
-    const today = new Date();
-    const formatDate = d => d.toISOString().split('T')[0];
+    const today = new Date(), formatDate = d => d.toISOString().split('T')[0];
     let quickFilter = $('#quickFilter').val();
-    if (quickFilter === 'all') {
-        start = end = '';
-    } else if (quickFilter === 'today') {
-        start = end = today;
-    } else if (quickFilter === 'yesterday') {
-        today.setDate(today.getDate()-1);
-        start = end = today;
-    } else if (quickFilter === 'this_week') {
-        const day = today.getDay();
-        const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Monday as start
-        const monday = new Date(today.setDate(diff));
-        start = monday;
-        end = new Date();
-    } else if (quickFilter === 'this_month') {
-        const first = new Date(today.getFullYear(), today.getMonth(), 1);
-        start = first;
-        end = today;
-    } else if (quickFilter === 'last_7_days') {
-        const last7 = new Date();
-        last7.setDate(today.getDate() - 6);
-        start = last7;
-        end = today;
-    } else {
-        start = document.getElementById('startDate').value;
-        end = document.getElementById('endDate').value;
+    switch(quickFilter) {
+      case 'all': start = end = ''; break;
+      case 'today': start = end = today; break;
+      case 'yesterday': today.setDate(today.getDate()-1); start = end = today; break;
+      case 'this_week': const day = today.getDay(), diff = today.getDate() - day + (day === 0 ? -6 : 1), monday = new Date(today.setDate(diff)); start = monday; end = new Date(); break;
+      case 'this_month': const first = new Date(today.getFullYear(), today.getMonth(), 1); start = first; end = today; break;
+      case 'last_7_days': const last7 = new Date(); last7.setDate(today.getDate() - 6); start = last7; end = today; break;
+      default: start = document.getElementById('startDate').value; end = document.getElementById('endDate').value; break;
     }
     if(quickFilter != 'all') {
       start = formatDate(start);
