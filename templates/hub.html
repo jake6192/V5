@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Simtec Staff Tools</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
   <link rel="stylesheet" href="{{ url_for('static', filename='hub.css') }}?v=1.0.7">
 </head>
 <body>
@@ -11,18 +12,17 @@
   <div class="hub-container">
     <a href="/member-tracking" class="hub-button">🧑‍💼 Claim Member Perks</a>
     <a href="/hourlog" class="hub-button">⏱ Staff Hours Log</a>
+    <a id="triggerPin" onclick="triggerPin(function() { window.top.location='/stock'; })" class="hub-button">📦 Stock Levels <small>(work in progress)</small></a>
+    <a href="/tabs" class="hub-button">💷 Customer Tabs <small>(work in progress)</small></a>
     <a href="https://support.trackmangolf.com/hc/en-us/articles/10494733056155-Help-Center-Trackman-Support-Contact-Numbers" class="hub-button">📞 Trackman Support</a>
     <a href="https://simtecgolf.co.uk" class="hub-button">🚩 Simtec Website</a>
-    <a href="#" class="hub-button" style="opacity: 0.5; pointer-events: none;">✆ Business Whatsapp (Coming Soon)</a>
-    <a href="#" class="hub-button" style="opacity: 0.5; pointer-events: none;">📊 Tabs/Stock Counts (Coming Soon)</a>
+    <a href="#" class="hub-button" style="opacity: 0.5; pointer-events: none;">✆ Business Whatsapp <small>(Coming Soon)</small></a>
     <!-- <a href="#" class="hub-button" style="opacity: 0.5; pointer-events: none;">🏒 Contact/website details for ordering stock(upstairs) (Coming Soon)</a> -->
   </div>
   
   <div class="iframe-container">
-    <div id="loadingOverlay">
-      <div class="spinner"></div>
-      <div class="loading-text">Trying to Load Bookings...<br />Message Jake if it doesnt load after 10s</div>
-    </div>
+    {% set modal_id = "loadingOverlay" %}
+    {% include "_modal.html" %}
   </div>
 
   <div class="blob-container">
@@ -38,6 +38,10 @@
     <div class="blob green"></div>
   </div>
 
+  {% set modal_id = "pinModal" %}
+  {% include "_modal.html" %}
+
+  <script src="{{ url_for('static', filename='common.js') }}?v=1.0.0"></script>
   <script src="{{ url_for('static', filename='hub.js') }}?v=1.0.7"></script>
 </body>
 </html>

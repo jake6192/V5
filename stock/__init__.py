@@ -1,0 +1,1 @@
+from .routes import stock_bp

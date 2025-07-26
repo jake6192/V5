@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <title>Stock Manager</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='stock.css') }}?v=1.0.7">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
+      <div class="home-button" onclick="window.location.href='/tabs'">📊 Tabs</div>
+      <h2>Stock</h2>
+      <button id="add-stock-btn">+ Add Item</button>
+      <button id="openSummary">📈 View Profit Reports</button>
+      <!-- <button id="openReportBtn">📈 View Profit Reports</button> -->
+    </div>
+
+    <div class="main-content">
+      <input type="text" id="search-input" placeholder="Filter items...">
+      <div id="stock-list" class="stock-cards"></div>
+    </div>
+  </div>
+
+  <div id="stock-modal" class="modal hidden">
+    <div class="modal-content form-layout">
+      <h2 id="modal-title" class="modal-title">Add New Stock Item</h2>
+      <div class="form-group"><label>Name</label><input type="text" id="stock-name" placeholder="e.g. Americano"></div>
+      <div class="form-group"><label>Venue</label><input type="text" id="stock-venue" placeholder="e.g. Kings Langley"></div>
+      <div class="form-group"><label>Price (£)</label><input type="number" id="stock-price" placeholder="e.g. 2.50" step="0.01"></div>
+      <div class="form-group"><label>Cost Price (£)</label><input type="number" id="stock-cost" placeholder="e.g. 0.75" step="0.01"></div>
+      <div class="form-group"><label>Initial Stock</label><input type="number" id="stock-qty" placeholder="e.g. 50"></div>
+      <div class="form-group"><label>Description</label><input type="text" id="stock-desc" placeholder="Optional notes..."></div>
+      <div class="form-group">
+        <label>Image URL</label><input type="text" id="stock-img" placeholder="https://...">
+        <button id="deleteCachedImageBtn" class="delete-btn">
+          Delete Saved Image
+        </button>
+      </div>
+      <div class="form-actions">
+        <button id="save-stock-btn" class="btn btn-green">Save</button>
+        <button onclick="closeModal('stock-modal')" class="btn btn-red">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="financialModal" class="modal">
+    <div class="modal-content">
+      <h2>Financial Report</h2>
+      <div class="filter-controls">
+        <label>Date Filter:</label>
+        <select id="quickFilter">
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="this_week">This Week</option>
+          <option value="this_month">This Month</option>
+          <option value="last_7_days">Last 7 Days</option>
+        </select>
+        <input type="date" id="startDate">
+        <input type="date" id="endDate">
+        <button id="applyDateFilter">Apply</button>
+      </div>
+      <div class="profit-table">
+        <h3>Item Profit Report</h3>
+        <div id="report-results" class="report-table-container"></div>
+      </div>
+      <div class="revenue-summary">
+        <p><strong>Potential Revenue Lost:</strong> £<span id="summary-losses">0.00</span></p>
+      </div>
+      <button onclick="closeModal('financialModal')">Close</button>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='stock.js') }}?v=1.0.7"></script>
+  <script src="{{ url_for('static', filename='jquery-3.7.1.slim.min.js') }}?v=1.0.7"></script>
+</body>
+</html>

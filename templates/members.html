@@ -1,4 +1,4 @@
-<!-- templates/index.html -->
+<!-- templates/members.html -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -7,11 +7,13 @@
   <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <title>Member Perk Tracker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
+  <link rel="stylesheet" href="{{ url_for('static', filename='members.css') }}?v=1.0.7">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
 
   <header>
+    <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
     <div class="brand">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="40">
     </div>
@@ -101,16 +103,8 @@
     </div>
   </div>
 
-  <div id="tierModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2 id="tierModalTitle">Edit Tier</h2>
-      <input type="hidden" id="tierIdInput">
-      <label>Tier Name: <input type="text" id="tierNameField"></label>
-      <label>Tier Color: <input type="color" id="tierColorField"></label>
-      <button id="saveTierBtn">Save Tier</button>
-    </div>
-  </div>
+  {% set modal_id = "tierModal" %}
+{% include "_modal.html" %}
 
   <div id="tierPerksModal" class="modal">
     <div class="modal-content">
@@ -129,30 +123,13 @@
     </div>
   </div>
 
-  <div id="perkModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2 id="perkModalTitle">Edit Perk</h2>
-      <input type="hidden" id="perkIdInput">
-      <label>Name: <input type="text" id="perkNameField"></label>
-      <label>Reset Period:
-        <select id="perkResetField">
-          <option value="Weekly">Weekly</option>
-          <option value="Monthly">Monthly</option>
-          <option value="Yearly">Yearly</option>
-          <option value="Unlimited">Unlimited</option>
-        </select>
-      </label>
-      <button id="savePerkBtn">Save Perk</button>
-    </div>
-  </div>
+  {% set modal_id = "perkModal" %}
+{% include "_modal.html" %}
 
-  <div id="loadingOverlay">
-    <div class="spinner"></div>
-    <div class="loading-text">Waiting for server...</div>
-  </div>
+  {% set modal_id = "loadingOverlay" %}
+{% include "_modal.html" %}
 
-  <script src="{{ url_for('static', filename='app.js') }}?v=1.0.7"></script>
+  <script src="{{ url_for('static', filename='members.js') }}?v=1.0.7"></script>
   <script>
     let fetchLogs = () => {
       fetch('/logs').then(r => r.json()).then(logs => {

@@ -1,0 +1,153 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: linear-gradient(#d3d3d3, #f0f0f0);
+  display: flex;
+  height: 100vh;
+}
+.container {
+  display: flex;
+  width: 100%;
+}
+.sidebar {
+  width: 220px;
+  background: #07372c;
+  color: #fff;
+  padding: 1rem;
+}
+.sidebar button {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 1rem;
+}
+.main-content {
+  flex-grow: 1;
+  padding: 1rem;
+  background: #f7fdb5;
+}
+.tab-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+.tab-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  justify-content: space-between;
+}
+.tab-body {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+.tab-footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 1rem;
+}
+@keyframes pulseHighlight {
+  0%   { background-color: #ffe5e5; }
+  50%  { background-color: #ddbbbb; }
+  100% { background-color: #ffe5e5; }
+}
+.tab-card.highlight {
+  border: 3px solid #ff6666;
+  animation: pulseHighlight 2s infinite;
+  position: relative;
+}
+.tab-card.highlight::before {
+  content: "UNPAID";
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  background: #d11a2a;
+  color: white;
+  padding: 2px 6px;
+  font-size: 12px;
+  border-radius: 4px;
+  font-weight: bold;
+  box-shadow: 0 0 3px rgba(0,0,0,0.2);
+}
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.hidden {
+  display: none;
+}
+
+
+.tab-item-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-item-line .item-name {
+  flex: 1;
+}
+
+.tab-item-line .item-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.tab-item-line .item-controls button {
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+}
+
+.add-new-row {
+  margin-top: 10px;
+  font-style: italic;
+  color: grey;
+  cursor: pointer;
+  padding: 6px;
+  border: 1px dashed #ccc;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.add-new-row:hover {
+  background: #f0f0f0;
+}
+
+.tab-card.paid {
+  background: #e6ffe6;
+  border: 2px solid #4CAF50;
+}
+
+.countdown {
+  display: none;
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid #daa520;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: #333;
+  font-weight: bold;
+  text-align: center;
+  pointer-events: none;
+}
