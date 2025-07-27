@@ -37,7 +37,7 @@ function setupPinSubmissionHandler() {
   });
 
   window.addEventListener("click", e => {
-    if (pinModalIsOpen && !pinModal.querySelector(".pin-modal-content").contains(e.target) && e.target.id != "triggerPin") {
+    if (pinModalIsOpen && !pinModal.querySelector(".pin-modal-content").contains(e.target) && e.target.id != "triggerPin" && e.target.id != "stock-button") {
       pinModal.style.display = "none";
       pinInput.value = "";
       pinError.innerText = "";
