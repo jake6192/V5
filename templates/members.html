@@ -8,12 +8,16 @@
   <title>Member Perk Tracker</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=1.0.7">
   <link rel="stylesheet" href="{{ url_for('static', filename='members.css') }}?v=1.0.7">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
 
   <header>
-    <div class="home-button" onclick="window.location.href='/'">🏠 Home</div>
+        <div id="btn-container">
+      <div class="button" id="home-button" onclick="window.location.href='/'">🏠 Home</div>
+      <div class="button" id="members-button" onclick="window.location.href='/hourlog'">⏱ Hourlog</div>
+      <div class="button" id="stock-button" onclick="triggerPin(function() { window.location.href='/stock'; })">📦 Stock</div>
+      <div class="button" id="tabs-button" onclick="window.location.href='/tabs'">💷 Tabs</div>
+    </div>
     <div class="brand">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" height="40">
     </div>
@@ -43,6 +47,9 @@
     </tbody>
   </table>
 
+  {% set modal_id = "pinModal" %}
+  {% include "_modal.html" %}
+  
   <!-- Modals -->
   <div id="memberModal" class="modal">
     <div class="modal-content">
@@ -104,7 +111,7 @@
   </div>
 
   {% set modal_id = "tierModal" %}
-{% include "_modal.html" %}
+  {% include "_modal.html" %}
 
   <div id="tierPerksModal" class="modal">
     <div class="modal-content">
@@ -124,11 +131,14 @@
   </div>
 
   {% set modal_id = "perkModal" %}
-{% include "_modal.html" %}
+  {% include "_modal.html" %}
 
   {% set modal_id = "loadingOverlay" %}
-{% include "_modal.html" %}
+  {% include "_modal.html" %}
 
+  <!-- <script src="{{ url_for('static', filename='jquery-3.7.1.slim.min.js') }}?v=1.0.7"></script> -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="{{ url_for('static', filename='common.js') }}?v=1.0.0"></script>
   <script src="{{ url_for('static', filename='members.js') }}?v=1.0.7"></script>
   <script>
     let fetchLogs = () => {
