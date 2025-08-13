@@ -68,13 +68,6 @@ def clear_logs():
         log_buffer.clear()
     return ('OK', 200)
 
-@app.route('/download-db')
-def download_db():
-    pw = request.args.get("pw", "")
-    if pw != "GolfTec3914+":
-        return '''<form><input type="password" name="pw" placeholder="Password"/><button type="submit">Download DB</button></form><div style="color:red;margin-top:10px;">{}</div>'''.format("Incorrect password." if pw else "")
-    return send_file('tracking.db', as_attachment=True)
-
 # Register blueprints
 from member_tracking import bp as member_bp
 from hourlog import bp as hourlog_bp
