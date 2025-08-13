@@ -21,6 +21,9 @@ function showToast(msg) {
 document.addEventListener("DOMContentLoaded", () => {
   let allShifts = [];
   let currentSort = { column: null, ascending: true };
+  let currentPage = 1;
+  let itemsPerPage = 25;
+  let totalPages = 1;
 
   // Elements
   const staffSelect = document.getElementById("staffSelect");
@@ -50,12 +53,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const clearLogsBtn = document.getElementById("clearLogs");
   const printBtn = document.getElementById("printTable");
   const exportCSVBtn = document.getElementById("exportCSV");
+  const itemsPerPageSelect = document.getElementById("itemsPerPage");
+  const prevPageBtn = document.getElementById("prevPage");
+  const nextPageBtn = document.getElementById("nextPage");
+  const pageInfo = document.getElementById("pageInfo");
 
   // === Live filtering hooks ===
-  filterStaff.addEventListener("change", renderTable);
-  filterVenue.addEventListener("change", renderTable);
-  rangeStart.addEventListener("input", renderTable);
-  rangeEnd.addEventListener("input", renderTable);
+  filterStaff.addEventListener("change", () => { currentPage = 1; renderTable(); });
+  filterVenue.addEventListener("change", () => { currentPage = 1; renderTable(); });
+  rangeStart.addEventListener("input", () => { currentPage = 1; renderTable(); });
+  rangeEnd.addEventListener("input", () => { currentPage = 1; renderTable(); });
   
   // Dark mode state
   if (localStorage.getItem("darkMode") === "true") {
@@ -85,6 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
       data = [];  // Prevent UI crash
     }
     allShifts = data;
+    currentPage = 1;
     renderTable();
     updateFilterOptions();
     hideOverlay();
@@ -167,9 +175,23 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
+    if (!filtered.length) {
+      tableBody.innerHTML = "";
+      totalHoursEl.textContent = "Total Hours: 0";
+      pageInfo.textContent = "Page 0 of 0";
+      prevPageBtn.disabled = true;
+      nextPageBtn.disabled = true;
+      return;
+    }
+
+    totalPages = Math.ceil(filtered.length / itemsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * itemsPerPage;
+    const pageItems = filtered.slice(start, start + itemsPerPage);
+
     tableBody.innerHTML = "";
-    let total = 0;
-    filtered.forEach(s => {
+    const total = filtered.reduce((sum, s) => sum + parseFloat(s.hours), 0);
+    pageItems.forEach(s => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${s.staff}</td>
@@ -180,10 +202,12 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${s.hours.toFixed(2)}</td>
         <td>${s.notes || ""}</td>
         <td><button onclick="deleteShift(${s.id})">🗑</button></td>`;
-      total += parseFloat(s.hours);
       tableBody.appendChild(tr);
     });
     totalHoursEl.textContent = "Total Hours: " + (total||0).toFixed(2);
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    prevPageBtn.disabled = currentPage <= 1;
+    nextPageBtn.disabled = currentPage >= totalPages;
   }
 
   function updateFilterOptions() {
@@ -310,8 +334,27 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       rangeStart.value = start;
       rangeEnd.value = end;
+      currentPage = 1;
       renderTable();
     });
+  });
+
+  itemsPerPageSelect.addEventListener("change", () => {
+    itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
+    currentPage = 1;
+    renderTable();
+  });
+  prevPageBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderTable();
+    }
+  });
+  nextPageBtn.addEventListener("click", () => {
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderTable();
+    }
   });
 
   // Calendar/Time Picker init

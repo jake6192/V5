@@ -136,6 +136,19 @@
       </div>
 
       <h2>Logged Shifts</h2>
+      <div class="pagination-controls">
+        <label for="itemsPerPage">Items per page:</label>
+        <select id="itemsPerPage">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="250">250</option>
+        </select>
+        <button id="prevPage">&lt;</button>
+        <span id="pageInfo"></span>
+        <button id="nextPage">&gt;</button>
+      </div>
       <table id="logTable">
         <thead>
           <tr>
