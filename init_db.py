@@ -1,16 +1,8 @@
 # init_db.py
 
-import psycopg2
+from shared.db import get_connection
 
-DB = {
-    "dbname": "tracking",
-    "user": "simtec",
-    "password": "Golftec789+",
-    "host": "localhost",
-    "port": 5432
-}
-
-conn = psycopg2.connect(**DB)
+conn = get_connection()
 conn.autocommit = True
 c = conn.cursor()
 
@@ -88,9 +80,6 @@ c.execute("""
 CREATE INDEX IF NOT EXISTS idx_tierperk_pair ON tier_perks(tier_id, perk_id)
 """)
 
-print("✅ PostgreSQL schema initialized successfully.")
-conn.close()
-
 
 # --- ADDED FOR TABS + STOCK MODULES ---
 
@@ -167,3 +156,6 @@ c.execute("""
     CREATE INDEX IF NOT EXISTS idx_unpaid_losses_deleted_at
     ON unpaid_losses (deleted_at);
 """)
+
+print("✅ PostgreSQL schema initialized successfully.")
+conn.close()

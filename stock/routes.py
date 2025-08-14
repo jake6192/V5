@@ -1,21 +1,12 @@
 from flask import Blueprint, request, jsonify, render_template, url_for
-import os, re, requests, psycopg2
+import os, re, requests
 from stock.utils import has_cached_image, delete_cached_image
 from psycopg2.extras import RealDictCursor
 from werkzeug.utils import secure_filename
 from shared.logger import log_message
+from shared.db import get_connection as get_db
 
 stock_bp = Blueprint('stock', __name__)
-
-DB_PARAMS = {
-    'dbname': 'tracking',
-    'user': 'simtec',
-    'password': 'Golftec789+',
-    'host': 'localhost'
-}
-
-def get_db():
-    return psycopg2.connect(**DB_PARAMS)
 
 @stock_bp.route('/stock')
 def stock_page():

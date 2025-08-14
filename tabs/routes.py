@@ -3,18 +3,9 @@ from shared.logger import log_message
 from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from shared.db import get_connection as get_db
 
 tabs_bp = Blueprint('tabs', __name__)
-
-DB_PARAMS = {
-    'dbname': 'tracking',
-    'user': 'simtec',
-    'password': 'Golftec789+',
-    'host': 'localhost'
-}
-
-def get_db():
-    return psycopg2.connect(**DB_PARAMS)
 
 @tabs_bp.route('/tabs')
 def tabs_page():
