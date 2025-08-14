@@ -1,6 +1,47 @@
 // hourlog.js — Fully backend-integrated version with ALL original UI functionality preserved
 let loadShifts;
 
+// Map to store a color for each staff member
+const staffColors = {};
+// Track hues to avoid overly similar colors
+const usedHues = [];
+
+// Generate a pastel color with sufficient hue separation
+function getPastelColor() {
+  const threshold = 40; // minimum hue difference in degrees
+  const maxAttempts = 20;
+  let hue;
+  let attempts = 0;
+
+  do {
+    hue = Math.floor(Math.random() * 360);
+    attempts++;
+  } while (
+    attempts < maxAttempts &&
+    usedHues.some(h => {
+      const diff = Math.abs(h - hue);
+      return Math.min(diff, 360 - diff) < threshold;
+    })
+  );
+
+  if (attempts === maxAttempts) {
+    // Fallback: evenly distribute hues using the golden angle
+    hue = (usedHues.length * 137.508) % 360;
+  }
+
+  usedHues.push(hue);
+  return `hsl(${hue}, 70%, 85%)`;
+}
+
+// Retrieve or assign a color for a given staff member
+function getStaffColor(name) {
+  if (!staffColors[name]) {
+    staffColors[name] = getPastelColor();
+  }
+  return staffColors[name];
+}
+
+
 function showToast(msg) {
   const toast = document.createElement("div");
   toast.textContent = msg;
@@ -193,8 +234,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const total = filtered.reduce((sum, s) => sum + parseFloat(s.hours), 0);
     pageItems.forEach(s => {
       const tr = document.createElement("tr");
+      const color = getStaffColor(s.staff);
       tr.innerHTML = `
-        <td>${s.staff}</td>
+        <td style="background-color: ${color};">${s.staff}</td>
         <td>${formatDate(s.date)}</td>
         <td>${s.start}</td>
         <td>${s.end}</td>

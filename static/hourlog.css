@@ -162,6 +162,7 @@ body {
   margin-bottom: 1rem;
 }
 
+#logTable td:first-child { color: #000 !important; }
 #logTable th, #logTable td {
   border: 1px solid #ccc;
   padding: 0.5rem;
