@@ -162,6 +162,7 @@ body {
   margin-bottom: 1rem;
 }
 
+#logTable td:first-child { color: #000 !important; }
 #logTable th, #logTable td {
   border: 1px solid #ccc;
   padding: 0.5rem;
@@ -197,6 +198,18 @@ body {
 /* Optional: dark mode label color */
 .dark .theme-toggle .theme-label {
   color: #e0e0e0;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.pagination-controls select,
+.pagination-controls button {
+  padding: 0.25rem 0.5rem;
 }
 
 /* Switch styling */

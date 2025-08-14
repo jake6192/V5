@@ -2,6 +2,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import threading
 import time
+from .config import DB_PASSWORD
 
 db_lock = threading.RLock()
 
@@ -13,7 +14,7 @@ def get_connection():
                     host="localhost",
                     dbname="tracking",
                     user="simtec",
-                    password="Golftec789+",
+                    password=DB_PASSWORD,
                     cursor_factory=RealDictCursor,
                     connect_timeout=2
                 )
