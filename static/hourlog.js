@@ -1,70 +1,20 @@
 // hourlog.js — Fully backend-integrated version with ALL original UI functionality preserved
-let loadShifts;
 
+// Load stored shift data function (assigned later in the file)
+let loadShifts;
 // Map to store a color for each staff member
 const staffColors = {};
 // Track hues to avoid overly similar colors
 const usedHues = [];
 
-// Generate a pastel color with sufficient hue separation
-function getPastelColor() {
-  const threshold = 40; // minimum hue difference in degrees
-  const maxAttempts = 20;
-  let hue;
-  let attempts = 0;
-
-  do {
-    hue = Math.floor(Math.random() * 360);
-    attempts++;
-  } while (
-    attempts < maxAttempts &&
-    usedHues.some(h => {
-      const diff = Math.abs(h - hue);
-      return Math.min(diff, 360 - diff) < threshold;
-    })
-  );
-
-  if (attempts === maxAttempts) {
-    // Fallback: evenly distribute hues using the golden angle
-    hue = (usedHues.length * 137.508) % 360;
-  }
-
-  usedHues.push(hue);
-  return `hsl(${hue}, 70%, 85%)`;
-}
-
-// Retrieve or assign a color for a given staff member
-function getStaffColor(name) {
-  if (!staffColors[name]) {
-    staffColors[name] = getPastelColor();
-  }
-  return staffColors[name];
-}
-
-
-function showToast(msg) {
-  const toast = document.createElement("div");
-  toast.textContent = msg;
-  toast.style.position = "fixed";
-  toast.style.bottom = "20px";
-  toast.style.left = "50%";
-  toast.style.transform = "translateX(-50%)";
-  toast.style.background = "#28a745";
-  toast.style.color = "#fff";
-  toast.style.padding = "0.75rem 1.5rem";
-  toast.style.borderRadius = "5px";
-  toast.style.fontWeight = "bold";
-  toast.style.zIndex = "9999";
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   let allShifts = [];
   let currentSort = { column: null, ascending: true };
   let currentPage = 1;
-  let itemsPerPage = 25;
+  let itemsPerPage = 10;
   let totalPages = 1;
+  let totalRecords = 0;
+  let totalHours = 0;
 
   // Elements
   const staffSelect = document.getElementById("staffSelect");
@@ -100,10 +50,61 @@ document.addEventListener("DOMContentLoaded", () => {
   const pageInfo = document.getElementById("pageInfo");
 
   // === Live filtering hooks ===
-  filterStaff.addEventListener("change", () => { currentPage = 1; renderTable(); });
-  filterVenue.addEventListener("change", () => { currentPage = 1; renderTable(); });
-  rangeStart.addEventListener("input", () => { currentPage = 1; renderTable(); });
-  rangeEnd.addEventListener("input", () => { currentPage = 1; renderTable(); });
+  filterStaff.addEventListener("change", () => { currentPage = 1; loadShifts(); });
+  filterVenue.addEventListener("change", () => { currentPage = 1; loadShifts(); });
+  rangeStart.addEventListener("input", () => { currentPage = 1; loadShifts(); });
+  rangeEnd.addEventListener("input", () => { currentPage = 1; loadShifts(); });
+  
+  // Show message to user at bottom on screen
+  function showToast(msg) {
+	  const toast = document.createElement("div");
+	  toast.textContent = msg;
+	  toast.style.position = "fixed";
+	  toast.style.bottom = "20px";
+	  toast.style.left = "50%";
+	  toast.style.transform = "translateX(-50%)";
+	  toast.style.background = "#28a745";
+	  toast.style.color = "#fff";
+	  toast.style.padding = "0.75rem 1.5rem";
+	  toast.style.borderRadius = "5px";
+	  toast.style.fontWeight = "bold";
+	  toast.style.zIndex = "9999";
+	  document.body.appendChild(toast);
+	  setTimeout(() => toast.remove(), 2000);
+	}
+
+	// Generate a pastel color with sufficient hue separation
+  function getPastelColor() {
+	  const threshold = 40; // minimum hue difference in degrees
+	  const maxAttempts = 20;
+	  let hue;
+	  let attempts = 0;
+
+	  do {
+		hue = Math.floor(Math.random() * 360);
+		attempts++;
+	  } while (
+		attempts < maxAttempts &&
+		usedHues.some(h => {
+		  const diff = Math.abs(h - hue);
+		  return Math.min(diff, 360 - diff) < threshold;
+		})
+	  );
+	  if (attempts === maxAttempts) {
+		// Fallback: evenly distribute hues using the golden angle
+		hue = (usedHues.length * 137.508) % 360;
+	  }
+	  usedHues.push(hue);
+	  return `hsl(${hue}, 70%, 85%)`;
+	}
+
+	// Retrieve or assign a color for a given staff member
+	function getStaffColor(name) {
+	  if (!staffColors[name]) {
+		staffColors[name] = getPastelColor();
+	  }
+	  return staffColors[name];
+	}
   
   // Dark mode state
   if (localStorage.getItem("darkMode") === "true") {
@@ -126,31 +127,38 @@ document.addEventListener("DOMContentLoaded", () => {
   // === Backend replacement ===
   loadShifts = async() => {
     showOverlay();
-    const res = await fetch("/api/shifts");
-    let data = await res.json();
-    if (!Array.isArray(data)) {
-      console.error("Invalid shift data:", data);
-      data = [];  // Prevent UI crash
+    const params = new URLSearchParams({
+      limit: itemsPerPage,
+      offset: (currentPage - 1) * itemsPerPage
+    });
+    const staffVal = filterStaff.value;
+    const venueVal = filterVenue.value;
+    const start = rangeStart.value;
+    const end = rangeEnd.value;
+    if (staffVal && staffVal !== "All") params.append("staff", staffVal);
+    if (venueVal && venueVal !== "All") params.append("venue", venueVal);
+    if (start) params.append("start", start);
+    if (end) params.append("end", end);
+    if (currentSort.column) {
+      params.append("sort", currentSort.column);
+      params.append("order", currentSort.ascending ? "asc" : "desc");
     }
-    allShifts = data;
-    currentPage = 1;
+    const res = await fetch(`/api/shifts?${params.toString()}`);
+    const data = await res.json();
+    allShifts = Array.isArray(data.results) ? data.results : [];
+    totalRecords = data.total || 0;
+    totalHours = allShifts.reduce((sum, s) => sum + (s.hours || 0), 0);
+    totalPages = Math.ceil(totalRecords / itemsPerPage);
+    updateFilterOptions(data.staff_options || [], data.venue_options || []);
     renderTable();
-    updateFilterOptions();
     hideOverlay();
   };
-
-  async function saveShifts() {
-    await loadShifts();  // Re-fetch after post/delete
-    renderTable();
-    updateFilterOptions();
-  }
 
   async function deleteShift(id) {
     if(confirm("Are you sure you would like to delete this shift?\n\nThis action cannot be undone.")) {
       showOverlay();
       await fetch(`/api/shifts/${id}`, { method: "DELETE" });
-      saveShifts();
-      hideOverlay();
+      await loadShifts();
     }
   }
   window.deleteShift = deleteShift;
@@ -163,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
       body: JSON.stringify(payload)
     });
     await loadShifts();   // refresh
-    hideOverlay();
     showToast("✅ Shift logged successfully");
   }
 
@@ -184,55 +191,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return `${dd}-${mm}-${yyyy}`;
   }
 
-  function isWithinDateRange(dateStr) {
-    if (!rangeStart.value && !rangeEnd.value) return true;
-    const target = new Date(dateStr);
-    const start = rangeStart.value ? new Date(rangeStart.value) : null;
-    const end = rangeEnd.value ? new Date(rangeEnd.value) : null;
-    if (start && target < start) return false;
-    if (end && target > end) return false;
-    return true;
-  }
-
   function renderTable() {
-    const staffVal = filterStaff.value;
-	  const venueVal = filterVenue.value;
-    const filtered = allShifts.filter(s =>
-      (staffVal === "All" || s.staff === staffVal) && (venueVal === "All" || s.venue === venueVal) &&
-      isWithinDateRange(s.date)
-    );
-
-    if (currentSort.column) {
-      filtered.sort((a, b) => {
-        let valA = a[currentSort.column];
-        let valB = b[currentSort.column];
-        if (currentSort.column === "hours") {
-          valA = parseFloat(valA);
-          valB = parseFloat(valB);
-        }
-        if (valA < valB) return currentSort.ascending ? -1 : 1;
-        if (valA > valB) return currentSort.ascending ? 1 : -1;
-        return 0;
-      });
-    }
-
-    if (!filtered.length) {
+    if (!allShifts.length) {
       tableBody.innerHTML = "";
-      totalHoursEl.textContent = "Total Hours: 0";
+      totalHoursEl.textContent = "Total Hours Displayed: 0";
       pageInfo.textContent = "Page 0 of 0";
       prevPageBtn.disabled = true;
       nextPageBtn.disabled = true;
       return;
     }
 
-    totalPages = Math.ceil(filtered.length / itemsPerPage);
-    if (currentPage > totalPages) currentPage = totalPages;
-    const start = (currentPage - 1) * itemsPerPage;
-    const pageItems = filtered.slice(start, start + itemsPerPage);
-
     tableBody.innerHTML = "";
-    const total = filtered.reduce((sum, s) => sum + parseFloat(s.hours), 0);
-    pageItems.forEach(s => {
+    allShifts.forEach(s => {
       const tr = document.createElement("tr");
       const color = getStaffColor(s.staff);
       tr.innerHTML = `
@@ -246,31 +216,39 @@ document.addEventListener("DOMContentLoaded", () => {
         <td><button onclick="deleteShift(${s.id})">🗑</button></td>`;
       tableBody.appendChild(tr);
     });
-    totalHoursEl.textContent = "Total Hours: " + (total||0).toFixed(2);
+    totalHoursEl.innerHTML = "Total Hours Displayed: <b>" + (totalHours || 0).toFixed(2) + "</b>";
     pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
     prevPageBtn.disabled = currentPage <= 1;
     nextPageBtn.disabled = currentPage >= totalPages;
   }
 
-  function updateFilterOptions() {
-    const uniqueStaff = [...new Set(allShifts.map(s => s.staff))];
-    const uniqueVenues = [...new Set(allShifts.map(s => s.venue))];
-    [filterStaff, cumulativeStaff].forEach(select => {
-      const current = select.value;
-      select.innerHTML = `<option value="All">All</option>`;
-      uniqueStaff.forEach(name => {
-        const opt = document.createElement("option");
-        opt.value = opt.textContent = name;
-        select.appendChild(opt);
-      });
-      if (current) select.value = current;
+  function updateFilterOptions(staffList, venueList) {
+    const staffCurrent = filterStaff.value;
+    filterStaff.innerHTML = `<option value="All">All</option>`;
+    staffList.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = name;
+      filterStaff.appendChild(opt);
     });
+    filterStaff.value = staffCurrent && staffList.includes(staffCurrent) ? staffCurrent : "All";
+
+    const cumulativeCurrent = cumulativeStaff.value;
+    cumulativeStaff.innerHTML = `<option disabled selected>Select Staff</option>`;
+    staffList.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = opt.textContent = name;
+      cumulativeStaff.appendChild(opt);
+    });
+    if (cumulativeCurrent) cumulativeStaff.value = cumulativeCurrent;
+
+    const venueCurrent = filterVenue.value;
     filterVenue.innerHTML = `<option value="All">All</option>`;
-	  uniqueVenues.forEach(v => {
+    venueList.forEach(v => {
       const opt = document.createElement("option");
       opt.value = opt.textContent = v;
       filterVenue.appendChild(opt);
-	  });
+    });
+    if (venueCurrent && venueList.includes(venueCurrent)) filterVenue.value = venueCurrent;
   }
 
   logShiftBtn.addEventListener("click", () => {
@@ -330,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentSort.column = col;
         currentSort.ascending = true;
       }
-      renderTable();
+      loadShifts();
     });
   });
 
@@ -339,15 +317,25 @@ document.addEventListener("DOMContentLoaded", () => {
       showOverlay();
       await fetch("/api/shifts", { method: "DELETE" });
       await loadShifts();
-      hideOverlay();
       showToast("🗑️ All logs deleted");
     }
   });
   printBtn.addEventListener("click", () => window.print());
 
-  exportCSVBtn.addEventListener("click", () => {
+  exportCSVBtn.addEventListener("click", async () => {
+    const params = new URLSearchParams({ limit: 100000, offset: 0 });
+    const staffVal = filterStaff.value;
+    const venueVal = filterVenue.value;
+    const start = rangeStart.value;
+    const end = rangeEnd.value;
+    if (staffVal && staffVal !== "All") params.append("staff", staffVal);
+    if (venueVal && venueVal !== "All") params.append("venue", venueVal);
+    if (start) params.append("start", start);
+    if (end) params.append("end", end);
+    const res = await fetch(`/api/shifts?${params.toString()}`);
+    const data = await res.json();
     const rows = [["Staff", "Date", "Start", "End", "Venue", "Hours", "Notes"]];
-    allShifts.forEach(s => {
+    (data.results || []).forEach(s => {
       rows.push([s.staff, s.date, s.start, s.end, s.venue, s.hours, s.notes || ""]);
     });
     const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
@@ -377,25 +365,25 @@ document.addEventListener("DOMContentLoaded", () => {
       rangeStart.value = start;
       rangeEnd.value = end;
       currentPage = 1;
-      renderTable();
+      loadShifts();
     });
   });
 
   itemsPerPageSelect.addEventListener("change", () => {
     itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
     currentPage = 1;
-    renderTable();
+    loadShifts();
   });
   prevPageBtn.addEventListener("click", () => {
     if (currentPage > 1) {
       currentPage--;
-      renderTable();
+      loadShifts();
     }
   });
   nextPageBtn.addEventListener("click", () => {
     if (currentPage < totalPages) {
       currentPage++;
-      renderTable();
+      loadShifts();
     }
   });
 

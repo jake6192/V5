@@ -12,7 +12,50 @@ def get_shifts():
     try:
         conn = get_connection()
         cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute('SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts ORDER BY date DESC, start DESC, "end" DESC')
+
+        limit = request.args.get('limit', default=25, type=int)
+        offset = request.args.get('offset', default=0, type=int)
+
+        staff = request.args.get('staff')
+        venue = request.args.get('venue')
+        start = request.args.get('start')
+        end = request.args.get('end')
+        sort = request.args.get('sort', 'date')
+        order = request.args.get('order', 'desc').upper()
+
+        where_clauses = []
+        params = []
+        if staff:
+            where_clauses.append('staff = %s')
+            params.append(staff)
+        if venue:
+            where_clauses.append('venue = %s')
+            params.append(venue)
+        if start:
+            where_clauses.append('date >= %s')
+            params.append(start)
+        if end:
+            where_clauses.append('date <= %s')
+            params.append(end)
+        where_sql = ' WHERE ' + ' AND '.join(where_clauses) if where_clauses else ''
+
+        count_q = f'SELECT COUNT(*) AS total, COALESCE(SUM(hours),0) AS total_hours FROM shifts{where_sql}'
+        cur.execute(count_q, params)
+        stats = cur.fetchone()
+        total = stats['total']
+        total_hours = float(stats['total_hours']) if stats['total_hours'] is not None else 0.0
+
+        valid_sort = {'staff', 'venue', 'hours', 'date'}
+        if sort not in valid_sort:
+            sort = 'date'
+        order = 'ASC' if order == 'ASC' else 'DESC'
+        if sort == 'date':
+            sort_clause = f'ORDER BY date {order}, start {order}, "end" {order}'
+        else:
+            sort_clause = f'ORDER BY {sort} {order}, date DESC, start DESC, "end" DESC'
+
+        data_q = f'SELECT id, staff, date, start, "end", venue, notes, hours FROM shifts{where_sql} {sort_clause} LIMIT %s OFFSET %s'
+        cur.execute(data_q, params + [limit, offset])
         rows = cur.fetchall()
         result = []
         for r in rows:
@@ -26,7 +69,21 @@ def get_shifts():
                 "notes": r["notes"] or "",
                 "hours": float(r["hours"]) if r["hours"] is not None else 0.0
             })
-        return jsonify(result)
+
+        cur.execute('SELECT DISTINCT staff FROM shifts ORDER BY staff')
+        staff_options = [row['staff'] for row in cur.fetchall()]
+        cur.execute('SELECT DISTINCT venue FROM shifts ORDER BY venue')
+        venue_options = [row['venue'] for row in cur.fetchall()]
+
+        return jsonify({
+            "results": result,
+            "total": total,
+            "total_hours": total_hours,
+            "limit": limit,
+            "offset": offset,
+            "staff_options": staff_options,
+            "venue_options": venue_options
+        })
     except Exception as e:
         log_message(f"[GET /api/shifts ERROR] {repr(e)}")
         return jsonify({"error": str(e)}), 500
